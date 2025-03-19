@@ -17,6 +17,7 @@ from enum import StrEnum
 
 from tariffpeg.errors import Invalid
 from tariffpeg.ids import is_slug
+from tariffpeg.model.scale import ScoreScale, scale_for
 
 
 class SyndicationClass(StrEnum):
@@ -143,6 +144,7 @@ class Channel:
     base_url: str
     syndication: SyndicationClass
     policy: FetchPolicy
+    scale_slug: str = "ten-point"
     locale: str = "en"
 
     def __post_init__(self) -> None:
@@ -154,8 +156,24 @@ class Channel:
             raise Invalid("base_url", self.base_url, "channels are read over https only")
         if self.base_url.endswith("/"):
             raise Invalid("base_url", self.base_url, "the base url carries no trailing slash")
+        if not self.locale.strip():
+            raise Invalid("locale", self.locale, "a channel serves its pages in some language")
+        scale_for(self.scale_slug)
 
     @property
     def carries_own_reviews(self) -> bool:
         """Return whether a review found here was written here."""
         return self.syndication is SyndicationClass.PRIMARY
+
+    @property
+    def scale(self) -> ScoreScale:
+        """Return the dial this channel publishes scores on."""
+        return scale_for(self.scale_slug)
+
+    def host(self) -> str:
+        """Return the host the fetcher talks to, with no scheme on it."""
+        return self.base_url.removeprefix("https://")
+
+    def robots_url(self) -> str:
+        """Return where this channel publishes its robots file."""
+        return f"https://{self.host()}/robots.txt"
