@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from tariffpeg.errors import AlreadyExists, Conflict, Invalid, NotFound, TariffpegError
+from tariffpeg.errors import (
+    AlreadyExists,
+    Conflict,
+    FetchFailed,
+    Invalid,
+    NotFound,
+    Refused,
+    TariffpegError,
+)
 
 
 def test_every_error_is_catchable_as_the_base() -> None:
@@ -25,8 +33,10 @@ def test_the_codes_are_distinct_so_the_cli_can_map_them_to_exit_codes() -> None:
         Invalid.code,
         Conflict.code,
         TariffpegError.code,
+        FetchFailed.code,
+        Refused.code,
     }
-    assert len(codes) == 5
+    assert len(codes) == 7
 
 
 def test_not_found_names_the_kind_and_the_reference_in_the_message() -> None:
@@ -71,3 +81,23 @@ def test_the_errors_can_be_raised_and_caught_by_their_own_type() -> None:
 
     with pytest.raises(Invalid):
         raise Invalid("season", "monsoon", "the calendar has three seasons")
+
+
+def test_a_fetch_failure_names_the_url_and_the_reason() -> None:
+    err = FetchFailed("https://seaboard.example/p/1", "the connection timed out")
+    assert "seaboard.example" in str(err)
+    assert err.context() == {
+        "url": "https://seaboard.example/p/1",
+        "reason": "the connection timed out",
+    }
+
+
+def test_a_refusal_names_the_term_that_held_the_request_back() -> None:
+    err = Refused("https://seaboard.example/p/1", "the robots file disallows this path")
+    assert err.term.startswith("the robots file")
+    assert err.context()["url"].endswith("/p/1")
+    assert isinstance(err, TariffpegError)
+
+
+def test_the_fetch_codes_are_distinct_from_the_store_ones() -> None:
+    assert len({FetchFailed.code, Refused.code, NotFound.code, Invalid.code}) == 4

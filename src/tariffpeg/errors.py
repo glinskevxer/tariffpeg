@@ -86,3 +86,33 @@ class Conflict(TariffpegError):
     def context(self) -> dict[str, str]:
         """Return the subject of the clash and why it cannot proceed."""
         return {"subject": self.subject, "reason": self.reason}
+
+
+class FetchFailed(TariffpegError):
+    """A request did not come back with a response at all."""
+
+    code = "fetch_failed"
+
+    def __init__(self, url: str, reason: str) -> None:
+        super().__init__(f"could not fetch {url}: {reason}")
+        self.url = url
+        self.reason = reason
+
+    def context(self) -> dict[str, str]:
+        """Return the url that failed and what went wrong."""
+        return {"url": self.url, "reason": self.reason}
+
+
+class Refused(TariffpegError):
+    """A request was not made because the agreed terms did not allow it."""
+
+    code = "refused"
+
+    def __init__(self, url: str, term: str) -> None:
+        super().__init__(f"{url} was not fetched: {term}")
+        self.url = url
+        self.term = term
+
+    def context(self) -> dict[str, str]:
+        """Return the url and the term that held it back."""
+        return {"url": self.url, "term": self.term}
