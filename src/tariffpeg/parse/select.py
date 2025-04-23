@@ -214,13 +214,55 @@ def _parse_simple(text: str) -> Simple:
     )
 
 
+def _split_branch(text: str) -> list[str]:
+    """Return the words of a branch, keeping brackets and quotes together.
+
+    Splitting on a regular expression looks right until a channel serves an
+    attribute value with a plus sign in it, at which point the reader decides
+    the middle of a mime type is a sibling combinator.
+    """
+    words: list[str] = []
+    current: list[str] = []
+    depth = 0
+    quote = ""
+
+    def flush() -> None:
+        if current:
+            words.append("".join(current))
+            current.clear()
+
+    for char in text:
+        if quote:
+            current.append(char)
+            if char == quote:
+                quote = ""
+            continue
+        if char in (chr(34), QUOTE) and depth:
+            quote = char
+            current.append(char)
+            continue
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth = max(0, depth - 1)
+        if depth == 0 and char.isspace():
+            flush()
+            continue
+        if depth == 0 and char in (">", "+"):
+            flush()
+            words.append(char)
+            continue
+        current.append(char)
+    flush()
+    return words
+
+
 def _parse_branch(text: str) -> tuple[Step, ...]:
     if not text:
         raise Invalid("selector", text, "a branch of a selector cannot be blank")
-    spaced = re.sub(r"\s*([>+])\s*", r" \1 ", text)
     steps: list[Step] = []
     combinator = " "
-    for word in spaced.split():
+    for word in _split_branch(text):
         if word in (">", "+"):
             if not steps:
                 raise Invalid("selector", text, "a branch cannot start with a combinator")
@@ -235,9 +277,28 @@ def _parse_branch(text: str) -> tuple[Step, ...]:
     return tuple(steps)
 
 
+def _split_list(text: str) -> list[str]:
+    """Return the comma separated branches, ignoring commas inside brackets."""
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for char in text:
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth = max(0, depth - 1)
+        if char == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(char)
+    parts.append("".join(current))
+    return parts
+
+
 def compile_selector(text: str) -> Selector:
     """Read a selector, raising on anything this reader does not support."""
     cleaned = text.strip()
     if not cleaned:
         raise Invalid("selector", text, "a selector cannot be blank")
-    return Selector(tuple(_parse_branch(part.strip()) for part in cleaned.split(",")))
+    return Selector(tuple(_parse_branch(part.strip()) for part in _split_list(cleaned)))
