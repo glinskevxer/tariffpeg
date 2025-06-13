@@ -95,11 +95,33 @@ def redact(text: str, reviewer_name: str = "") -> Redacted:
     swap(EMAIL, "email")
     swap(TELEPHONE, "telephone", _telephone_is_long_enough)
     swap(REFERENCE, "reference")
-    if reviewer_name.strip():
-        pattern = re.compile(re.escape(reviewer_name.strip()), re.I)
+    pattern = name_pattern(reviewer_name)
+    if pattern is not None:
         swap(pattern, "name")
     order = ("link", "email", "telephone", "reference", "name")
     return Redacted(working, tuple((kind, counts[kind]) for kind in order if kind in counts))
+
+
+SHORTEST_NAME_PART = 3
+"""A name part shorter than this is an initial or a particle, and taking every
+two letter run out of a review body would leave nothing behind."""
+
+
+def name_pattern(reviewer_name: str) -> re.Pattern[str] | None:
+    """Return the pattern that matches a reviewer name and its parts.
+
+    Guests are shown on a channel under a full name and then write about
+    themselves by their first name, so matching only the full string leaves the
+    first name sitting in the body. Longer forms are tried first, which keeps
+    the whole name replaced by one marker rather than two.
+    """
+    whole = " ".join(reviewer_name.split())
+    if not whole:
+        return None
+    parts = [part for part in re.split(r"[\s.]+", whole) if len(part) >= SHORTEST_NAME_PART]
+    forms = sorted({whole, *parts}, key=len, reverse=True)
+    joined = "|".join(re.escape(form) for form in forms)
+    return re.compile(rf"(?<!\w)(?:{joined})(?!\w)", re.I)
 
 
 def redact_name(name: str) -> str:
