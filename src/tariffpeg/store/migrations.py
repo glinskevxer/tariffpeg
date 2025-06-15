@@ -88,6 +88,54 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX licence_particular_claim ON licence_particular(claim_key)",
         ),
     ),
+    Migration(
+        2,
+        "evidence",
+        (
+            """
+            CREATE TABLE capture (
+                digest         TEXT PRIMARY KEY,
+                channel        TEXT NOT NULL REFERENCES channel(slug),
+                url            TEXT NOT NULL,
+                final_url      TEXT NOT NULL,
+                status         INTEGER NOT NULL,
+                fetched_at     TEXT NOT NULL,
+                byte_count     INTEGER NOT NULL,
+                elapsed_ms     INTEGER NOT NULL,
+                profile_key    TEXT NOT NULL,
+                licence_serial INTEGER,
+                etag           TEXT NOT NULL DEFAULT ''
+            )
+            """,
+            """
+            CREATE TABLE review (
+                review_key        TEXT PRIMARY KEY,
+                channel           TEXT NOT NULL REFERENCES channel(slug),
+                channel_review_id TEXT NOT NULL,
+                licence_serial    INTEGER NOT NULL REFERENCES licence(serial) ON DELETE CASCADE,
+                stay_year         INTEGER NOT NULL,
+                stay_month        INTEGER NOT NULL,
+                unit_points       INTEGER NOT NULL,
+                raw_score         TEXT NOT NULL,
+                title             TEXT NOT NULL,
+                body              TEXT NOT NULL,
+                reviewer_initials TEXT NOT NULL,
+                room_class        TEXT NOT NULL,
+                language          TEXT NOT NULL,
+                submitted         TEXT NOT NULL,
+                operator_response TEXT NOT NULL,
+                capture_digest    TEXT NOT NULL REFERENCES capture(digest),
+                profile_key       TEXT NOT NULL,
+                first_seen        TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX capture_channel ON capture(channel, fetched_at)",
+            "CREATE INDEX capture_licence ON capture(licence_serial)",
+            "CREATE INDEX review_licence ON review(licence_serial, stay_year, stay_month)",
+            "CREATE INDEX review_channel ON review(channel)",
+            "CREATE INDEX review_capture ON review(capture_digest)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 
