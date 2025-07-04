@@ -49,6 +49,7 @@ class ClaimRule:
     polarity: Polarity
     persistence: Persistence
     strength: int
+    value_scale: int = 1
     note: str = ""
 
     def __post_init__(self) -> None:
@@ -57,6 +58,8 @@ class ClaimRule:
         spec = spec_for(self.claim_key)
         if not 1 <= self.strength <= MAX_STRENGTH:
             raise Invalid("strength", self.strength, f"a rule weighs one to {MAX_STRENGTH}")
+        if self.value_scale < 1:
+            raise Invalid("value_scale", self.value_scale, "a scale multiplies, it does not divide")
         compiled = compile_pattern(self.pattern)
         captures = any(type(term).__name__ == "Number" for term in compiled.terms)
         if self.polarity is Polarity.STATES:
@@ -64,6 +67,8 @@ class ClaimRule:
                 raise Invalid("polarity", self.polarity, "a yes or no particular has no value")
             if not captures:
                 raise Invalid("pattern", self.pattern, "a rule that states a value captures one")
+        elif self.value_scale != 1:
+            raise Invalid("value_scale", self.value_scale, "only a stated value is scaled")
         elif captures:
             raise Invalid("pattern", self.pattern, "only a rule that states a value captures one")
         if spec.kind is not ClaimKind.FLAG and self.polarity is not Polarity.STATES:
@@ -87,6 +92,10 @@ class Assertion:
     strength: int
     quote: str
     value: int | None = None
+
+    def __post_init__(self) -> None:
+        if not 1 <= self.strength <= MAX_STRENGTH:
+            raise Invalid("strength", self.strength, f"an assertion weighs one to {MAX_STRENGTH}")
 
     @property
     def structural(self) -> bool:
@@ -147,7 +156,7 @@ class RulePack:
                     persistence=rule.persistence,
                     strength=rule.strength,
                     quote=hit.span(tokens),
-                    value=hit.numbers[0] if hit.numbers else None,
+                    value=hit.numbers[0] * rule.value_scale if hit.numbers else None,
                 )
             )
         return tuple(found)
