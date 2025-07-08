@@ -136,6 +136,26 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX review_capture ON review(capture_digest)",
         ),
     ),
+    Migration(
+        3,
+        "listings",
+        (
+            """
+            CREATE TABLE listing (
+                licence_serial INTEGER NOT NULL REFERENCES licence(serial) ON DELETE CASCADE,
+                channel        TEXT NOT NULL REFERENCES channel(slug),
+                path           TEXT NOT NULL,
+                property_ref   TEXT NOT NULL,
+                confirmed_on   TEXT NOT NULL,
+                active         INTEGER NOT NULL,
+                note           TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (licence_serial, channel)
+            )
+            """,
+            "CREATE INDEX listing_channel ON listing(channel, active)",
+            "CREATE UNIQUE INDEX listing_property ON listing(channel, property_ref)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 
