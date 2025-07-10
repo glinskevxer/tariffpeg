@@ -8,7 +8,7 @@ from tariffpeg.model.period import Season, StayMonth
 from tariffpeg.model.review import Review
 from tariffpeg.sample.coverage import Coverage, SeasonCoverage, measure, window_for
 from tariffpeg.sample.regime import PUBLISHED
-from tests.sample.conftest import a_review
+from tests.conftest import a_review
 
 NOW = StayMonth(2026, 6)
 SHARED = "The lift was out of order for the entire week and nobody said a word about it."
