@@ -158,3 +158,17 @@ def test_a_ready_grant_reports_no_wait_and_is_not_exhausted() -> None:
     grant = Grant(Hold.READY, 0)
     assert grant.allowed
     assert not grant.exhausted
+
+
+def test_an_unpaced_request_counts_against_the_ceiling_but_starts_no_delay() -> None:
+    pacer = Pacer()
+    pacer.record(HOST, at(), paced=False)
+    assert pacer.spent_today(HOST, at()) == 1
+    assert pacer.ask(HOST, policy(), at()).allowed
+
+
+def test_an_unpaced_request_still_rolls_the_day_over() -> None:
+    pacer = Pacer()
+    pacer.record(HOST, at(), paced=False)
+    pacer.record(HOST, at(day=13), paced=False)
+    assert pacer.spent_today(HOST, at(day=13)) == 1

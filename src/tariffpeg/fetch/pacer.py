@@ -103,14 +103,21 @@ class Pacer:
                 return Grant(Hold.CRAWL_DELAY, _ms_between(at, earliest), earliest)
         return Grant(Hold.READY, 0, at)
 
-    def record(self, host: str, at: dt.datetime) -> None:
-        """Note that a request went out to this host."""
+    def record(self, host: str, at: dt.datetime, paced: bool = True) -> None:
+        """Note that a request went out to this host.
+
+        A request recorded unpaced counts against the daily ceiling but does not
+        start the crawl delay. That is for the robots file, which is fetched
+        once at the top of a run and is not part of the crawl the channel asked
+        us to space out.
+        """
         state = self.state(host)
         if state.day != at.date():
             state.day = at.date()
             state.spent = 0
         state.spent += 1
-        state.last_request = at
+        if paced:
+            state.last_request = at
 
     def forget(self, host: str) -> None:
         """Drop what is remembered about a host."""
