@@ -156,6 +156,26 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE UNIQUE INDEX listing_property ON listing(channel, property_ref)",
         ),
     ),
+    Migration(
+        4,
+        "remediation",
+        (
+            """
+            CREATE TABLE remediation (
+                licence_serial   INTEGER NOT NULL REFERENCES licence(serial) ON DELETE CASCADE,
+                claim_key        TEXT NOT NULL,
+                reference        TEXT NOT NULL,
+                filed_on         TEXT NOT NULL,
+                effective_year   INTEGER NOT NULL,
+                effective_month  INTEGER NOT NULL,
+                accepted         INTEGER NOT NULL,
+                note             TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (licence_serial, claim_key, reference)
+            )
+            """,
+            "CREATE INDEX remediation_licence ON remediation(licence_serial, accepted)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 
