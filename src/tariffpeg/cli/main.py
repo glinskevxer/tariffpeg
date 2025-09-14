@@ -7,8 +7,10 @@ from pathlib import Path
 import click
 
 from tariffpeg import __version__
+from tariffpeg.cli.config import config_group
 from tariffpeg.cli.context import Context, settings_from
 from tariffpeg.cli.db import db_group
+from tariffpeg.cli.licence import licence_group
 from tariffpeg.errors import TariffpegError
 
 
@@ -46,4 +48,6 @@ def main(
     ctx.call_on_close(ctx.obj.close)
 
 
+main.add_command(config_group)
 main.add_command(db_group)
+main.add_command(licence_group)

@@ -8,7 +8,7 @@ output.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -60,7 +60,7 @@ class Context:
             self._db.close()
             self._db = None
 
-    def emit(self, rows: Sequence[dict[str, object]], columns: Sequence[Column]) -> None:
+    def emit(self, rows: Sequence[Mapping[str, object]], columns: Sequence[Column]) -> None:
         """Print rows the way the caller asked for them."""
         if self.as_csv:
             click.echo(as_csv(rows, columns), nl=False)
