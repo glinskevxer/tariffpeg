@@ -19,13 +19,15 @@ BROKEN_LIFT = "The lift was out of order for the whole week we stayed there."
 BREAKFAST = "Breakfast was charged at twelve pounds a head on every single morning."
 
 
-def a_review(number: str, body: str, channel: str = "seaboard", month: int = 7) -> Review:
+def a_review(
+    number: str, body: str, channel: str = "seaboard", month: int = 7, year: int = 2025
+) -> Review:
     """Return a review carrying a given body."""
     return Review(
         channel=channel,
         channel_review_id=number,
         licence_serial=4021,
-        stay=StayMonth(2025, month),
+        stay=StayMonth(year, month),
         unit_points=74,
         raw_score="8.4",
         body=body,

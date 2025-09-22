@@ -1,0 +1,144 @@
+"""Reading rows, calling something that knows nothing about rows, handing back the answer."""
+
+from __future__ import annotations
+
+import datetime as dt
+
+import pytest
+
+from tariffpeg import service
+from tariffpeg.model.licence import LicenceStatus
+from tariffpeg.model.listing import Listing
+from tariffpeg.model.period import StayMonth
+from tariffpeg.model.remediation import Remediation
+from tariffpeg.store.captures import CaptureStore
+from tariffpeg.store.channels import ChannelStore
+from tariffpeg.store.db import Database
+from tariffpeg.store.licences import LicenceStore
+from tariffpeg.store.listings import ListingStore
+from tariffpeg.store.remediations import RemediationStore
+from tariffpeg.store.reviews import ReviewStore
+from tests.conftest import a_review as a_plain_review
+from tests.store.conftest import DIGEST, FETCHED, a_capture, a_channel, a_licence
+from tests.triage.conftest import NO_LIFT, NO_LIFT_AGAIN, a_review
+
+AT = StayMonth(2025, 9)
+ON = dt.date(2025, 9, 15)
+
+
+@pytest.fixture
+def wired(db: Database) -> Database:
+    ChannelStore(db).add(a_channel("seaboard"))
+    ChannelStore(db).add(a_channel("quayside"))
+    LicenceStore(db).add(a_licence())
+    CaptureStore(db).record(a_capture())
+    ListingStore(db).add(
+        Listing(4021, "seaboard", "/property/4021/reviews", "P-1", dt.date(2025, 6, 1))
+    )
+    ListingStore(db).add(
+        Listing(4021, "quayside", "/property/4021/reviews", "Q-1", dt.date(2025, 6, 1))
+    )
+    return db
+
+
+def test_the_channels_come_back_by_slug(wired: Database) -> None:
+    found = service.channels(wired)
+    assert sorted(found) == ["quayside", "seaboard"]
+
+
+def test_the_listings_come_back_by_licence(wired: Database) -> None:
+    found = service.listings(wired)
+    assert sorted(item.channel for item in found[4021]) == ["quayside", "seaboard"]
+
+
+def test_a_retired_listing_is_left_out(wired: Database) -> None:
+    store = ListingStore(wired)
+    store.replace(store.get(4021, "quayside").retired("the page went"))
+    assert [item.channel for item in service.listings(wired)[4021]] == ["seaboard"]
+
+
+def test_the_coverage_of_a_licence_with_nothing_held_is_the_whole_requirement(
+    wired: Database,
+) -> None:
+    found = service.coverage_for(wired, a_licence(), AT)
+    assert found.opinions == 0
+    assert found.total_shortfall > 0
+    assert not found.satisfied
+
+
+def test_reviews_that_are_held_show_up_in_the_coverage(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    found = service.coverage_for(wired, a_licence(), AT)
+    assert found.opinions == 1
+    assert found.channels_held == ("seaboard",)
+
+
+def test_the_coverage_of_every_active_licence_comes_back_at_once(wired: Database) -> None:
+    found = service.coverages(wired, AT)
+    assert sorted(found) == [4021]
+
+
+def test_a_licence_that_is_not_active_is_left_out_of_the_coverage(wired: Database) -> None:
+    store = LicenceStore(wired)
+    store.replace(store.get(4021).with_status(LicenceStatus.LAPSED))
+    assert service.coverages(wired, AT) == {}
+
+
+def test_the_plan_sends_the_harvest_to_the_listed_channels(wired: Database) -> None:
+    plan = service.plan(wired, AT, ON)
+    assert plan.channels() == ("quayside", "seaboard")
+    assert plan.stops[0].url.startswith("https://")
+
+
+def test_a_satisfied_licence_is_left_out_of_the_plan(wired: Database) -> None:
+    reviews = ReviewStore(wired)
+    number = 0
+    for month in (7, 8, 5, 6, 9, 10, 3, 4, 11):
+        for _ in range(12):
+            number += 1
+            channel = "seaboard" if number % 2 else "quayside"
+            reviews.add(a_plain_review(str(number), 2025, month, channel), FETCHED)
+    assert service.coverage_for(wired, a_licence(), AT).satisfied
+    plan = service.plan(wired, AT, ON)
+    assert plan.stops == ()
+    assert plan.skipped == ("4021: the sample is complete",)
+
+
+def test_the_captures_behind_a_licence_come_back_by_digest(wired: Database) -> None:
+    found = service.captures_for(wired, 4021)
+    assert DIGEST in found
+    assert found[DIGEST].fetched_at == FETCHED
+
+
+def test_a_case_file_is_built_out_of_what_the_store_holds(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    ReviewStore(wired).add(a_review("2", NO_LIFT_AGAIN, "quayside"), FETCHED)
+    file = service.case_for(wired, a_licence(), AT)
+    assert file.licence.serial == 4021
+    assert file.decision.findings
+    assert file.quotations
+
+
+def test_a_notice_on_file_reaches_the_case_file(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    RemediationStore(wired).add(
+        Remediation(4021, "lift", "RN-1", dt.date(2026, 3, 1), StayMonth(2026, 1), accepted=True)
+    )
+    file = service.case_for(wired, a_licence(), AT)
+    assert file.applied.is_cleared("lift")
+    assert file.notices
+
+
+def test_a_decision_comes_back_for_every_active_licence(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    found = service.decisions(wired, AT)
+    assert len(found) == 1
+    assert found[0].licence_serial == 4021
+
+
+def test_decisions_come_back_heaviest_first(wired: Database) -> None:
+    LicenceStore(wired).add(a_licence(5000))
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    found = service.decisions(wired, AT)
+    assert len(found) == 2
+    assert found[0].score >= found[1].score
