@@ -142,3 +142,13 @@ def test_decisions_come_back_heaviest_first(wired: Database) -> None:
     found = service.decisions(wired, AT)
     assert len(found) == 2
     assert found[0].score >= found[1].score
+
+
+def test_a_licence_that_is_not_active_reaches_the_plan_so_it_can_be_reported(
+    wired: Database,
+) -> None:
+    store = LicenceStore(wired)
+    store.replace(store.get(4021).with_status(LicenceStatus.LAPSED))
+    plan = service.plan(wired, AT, ON)
+    assert plan.stops == ()
+    assert plan.skipped == ("4021: the licence is lapsed",)

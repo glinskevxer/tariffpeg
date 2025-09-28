@@ -82,9 +82,14 @@ def plan(
     regime: Regime = PUBLISHED,
     rules: SyndicationRules = DEFAULT_RULES,
 ) -> Plan:
-    """Return the plan for the next harvest."""
-    active = LicenceStore(db).with_status(LicenceStatus.ACTIVE)
-    return build_plan(active, listings(db), channels(db), coverages(db, at, regime, rules), on)
+    """Return the plan for the next harvest.
+
+    Every licence goes to the planner, not just the active ones. The planner is
+    where the reasons for leaving a licence out are written down, and a licence
+    filtered out before it gets there is a licence nobody can be told about.
+    """
+    everything = LicenceStore(db).all()
+    return build_plan(everything, listings(db), channels(db), coverages(db, at, regime, rules), on)
 
 
 def captures_for(db: Database, serial: int) -> Mapping[str, Capture]:
