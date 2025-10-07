@@ -7,9 +7,27 @@ import pytest
 from tariffpeg.parse.profile import FieldRule, Profile
 
 REVIEWS = (
-    ("91188", "Lovely spot", "There is no lift and we were up three flights.", "8.4", "July 2025"),
-    ("91190", "Fine week", "Breakfast was charged at twelve pounds a head.", "6.0", "June 2025"),
-    ("91191", "Good", "Parking was easy and the harbour walk starts outside.", "9.0", "May 2025"),
+    (
+        "91188",
+        "Lovely spot",
+        "There is no lift here at all and we were carried up three flights of stairs.",
+        "8.4",
+        "July 2025",
+    ),
+    (
+        "91190",
+        "Fine week",
+        "Breakfast was charged at twelve pounds a head on every morning of our stay.",
+        "6.0",
+        "June 2025",
+    ),
+    (
+        "91191",
+        "Good",
+        "Parking was easy and the harbour walk starts right outside the front door.",
+        "9.0",
+        "May 2025",
+    ),
 )
 
 

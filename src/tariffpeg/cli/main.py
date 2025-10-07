@@ -15,6 +15,8 @@ from tariffpeg.cli.harvest import harvest_group
 from tariffpeg.cli.licence import licence_group
 from tariffpeg.cli.listing import listing_group
 from tariffpeg.cli.review import review_group
+from tariffpeg.cli.sample import sample_group
+from tariffpeg.cli.triage import triage_group
 from tariffpeg.errors import TariffpegError
 
 
@@ -59,3 +61,5 @@ main.add_command(harvest_group)
 main.add_command(licence_group)
 main.add_command(listing_group)
 main.add_command(review_group)
+main.add_command(sample_group)
+main.add_command(triage_group)
