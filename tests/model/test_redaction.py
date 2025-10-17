@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tariffpeg.normalise.redact import Redacted, is_clean, redact, redact_name
+from tariffpeg.model.redaction import Redacted, is_clean, redact, redact_name
 
 
 def test_a_review_with_nothing_personal_in_it_comes_back_unchanged() -> None:

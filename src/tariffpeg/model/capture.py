@@ -13,7 +13,6 @@ from dataclasses import dataclass
 
 from tariffpeg.clock import require_utc
 from tariffpeg.errors import Invalid
-from tariffpeg.fetch.transport import Response
 from tariffpeg.ids import is_slug
 
 
@@ -63,28 +62,3 @@ class Capture:
     def age_at(self, at: dt.datetime) -> dt.timedelta:
         """Return how old this capture is at a given instant."""
         return require_utc(at, "at") - self.fetched_at
-
-    @classmethod
-    def of(
-        cls,
-        response: Response,
-        channel: str,
-        requested_url: str,
-        fetched_at: dt.datetime,
-        profile_key: str,
-        licence_serial: int | None = None,
-    ) -> Capture:
-        """Record a response as a capture."""
-        return cls(
-            digest=response.digest,
-            channel=channel,
-            url=requested_url,
-            final_url=response.url,
-            status=response.status,
-            fetched_at=fetched_at,
-            byte_count=len(response.body),
-            profile_key=profile_key,
-            elapsed_ms=response.elapsed_ms,
-            licence_serial=licence_serial,
-            etag=response.headers.get("etag"),
-        )

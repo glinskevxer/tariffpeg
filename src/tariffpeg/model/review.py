@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from tariffpeg.errors import Invalid
 from tariffpeg.ids import is_slug, review_key
 from tariffpeg.model.period import Season, StayMonth
-from tariffpeg.normalise.redact import is_clean
+from tariffpeg.model.redaction import is_clean
 
 SUBSTANTIAL_WORDS = 12
 """Below this a review is a score with a few words attached. It still counts

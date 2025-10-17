@@ -7,7 +7,6 @@ import datetime as dt
 import pytest
 
 from tariffpeg.errors import Invalid, NotFound
-from tariffpeg.fetch.transport import Headers, Response
 from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel, FetchPolicy, SyndicationClass
 from tariffpeg.store.captures import COLUMNS, CaptureStore, flatten
@@ -93,25 +92,6 @@ def test_a_capture_worth_reading_is_the_one_with_a_page_in_it() -> None:
 
 def test_the_age_of_a_capture_is_measured_from_when_it_was_taken() -> None:
     assert capture().age_at(AT + dt.timedelta(days=3)) == dt.timedelta(days=3)
-
-
-def test_a_response_is_recorded_as_a_capture() -> None:
-    response = Response(
-        "https://seaboard.example/p/1/reviews?page=1",
-        200,
-        b"<html>page</html>",
-        Headers({"ETag": "abc"}),
-        elapsed_ms=142,
-    )
-    built = Capture.of(
-        response, "seaboard", "https://seaboard.example/p/1/reviews", AT, "s/v1", 4021
-    )
-    assert built.digest == response.digest
-    assert built.redirected
-    assert built.byte_count == len(b"<html>page</html>")
-    assert built.etag == "abc"
-    assert built.elapsed_ms == 142
-    assert built.licence_serial == 4021
 
 
 def test_flattening_produces_one_value_for_every_column() -> None:

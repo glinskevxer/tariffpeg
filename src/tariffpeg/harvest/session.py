@@ -24,6 +24,35 @@ from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel
 
 
+def capture_of(
+    response: Response,
+    channel: str,
+    requested_url: str,
+    fetched_at: dt.datetime,
+    profile_key: str,
+    licence_serial: int | None = None,
+) -> Capture:
+    """Record a response as a capture.
+
+    This lives here rather than on the capture itself. A capture is a record in
+    the book, and the book has no business knowing what an http response looks
+    like.
+    """
+    return Capture(
+        digest=response.digest,
+        channel=channel,
+        url=requested_url,
+        final_url=response.url,
+        status=response.status,
+        fetched_at=fetched_at,
+        byte_count=len(response.body),
+        profile_key=profile_key,
+        elapsed_ms=response.elapsed_ms,
+        licence_serial=licence_serial,
+        etag=response.headers.get("etag"),
+    )
+
+
 class Result(StrEnum):
     """What came of asking for one page."""
 
@@ -130,7 +159,7 @@ class Session:
             return Outcome(Result.UNCHANGED, url, response=reply)
         if not reply.ok:
             return Outcome(Result.FAILED, url, response=reply, reason=f"status {reply.status}")
-        capture = Capture.of(reply, channel.slug, url, at, profile_key, licence_serial)
+        capture = capture_of(reply, channel.slug, url, at, profile_key, licence_serial)
         return Outcome(Result.FETCHED, url, response=reply, capture=capture)
 
     @staticmethod

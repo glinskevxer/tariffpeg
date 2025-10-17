@@ -8,7 +8,8 @@ import pytest
 
 from tariffpeg.fetch.pacer import Pacer
 from tariffpeg.fetch.replay import ReplayTransport
-from tariffpeg.harvest.session import Outcome, Result, Session
+from tariffpeg.fetch.transport import Headers, Response
+from tariffpeg.harvest.session import Outcome, Result, Session, capture_of
 from tariffpeg.model.channel import Channel, CourtesyWindow, FetchPolicy, SyndicationClass
 from tests.conftest import AGENT
 
@@ -206,3 +207,21 @@ def test_a_session_can_be_handed_a_pacer_that_already_knows_things() -> None:
     pacer = Pacer()
     pacer.record("seaboard.example", AT)
     assert Session(replay, pacer).fetch(channel(), PAGE, AT, "seaboard/v1").result is Result.HELD
+
+
+def test_a_response_is_recorded_as_a_capture() -> None:
+    reply = Response(
+        "https://seaboard.example/p/1/reviews?page=1",
+        200,
+        b"<html>page</html>",
+        Headers({"ETag": "abc"}),
+        elapsed_ms=142,
+    )
+    built = capture_of(reply, "seaboard", PAGE, AT, "seaboard/v1", 4021)
+    assert built.digest == reply.digest
+    assert built.redirected
+    assert built.byte_count == len(b"<html>page</html>")
+    assert built.etag == "abc"
+    assert built.elapsed_ms == 142
+    assert built.licence_serial == 4021
+    assert built.fetched_at == AT

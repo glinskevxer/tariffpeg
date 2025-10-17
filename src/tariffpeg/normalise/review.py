@@ -15,8 +15,8 @@ from tariffpeg.errors import Invalid
 from tariffpeg.ids import normalise_slug
 from tariffpeg.model.channel import Channel
 from tariffpeg.model.period import StayMonth, parse_stay_month
+from tariffpeg.model.redaction import redact, redact_name
 from tariffpeg.model.review import Review
-from tariffpeg.normalise.redact import redact, redact_name
 from tariffpeg.parse.extract import RawReview
 
 DATE_SHAPES = ("%Y-%m-%d", "%d/%m/%Y", "%d %B %Y", "%d %b %Y", "%B %d, %Y")
