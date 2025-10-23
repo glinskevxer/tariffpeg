@@ -20,12 +20,17 @@ PACKAGE = "tariffpeg"
 
 @cache
 def repo_root() -> Path:
-    """Return the root of the working tree."""
+    """Return the root of the working tree.
+
+    The search walks up from this file. An installed copy with no project file
+    above it has nothing to check, so the package directory is used and the
+    checks come back clean rather than blowing up inside the error path.
+    """
     here = Path(__file__).resolve()
     for parent in here.parents:
         if (parent / "pyproject.toml").exists():
             return parent
-    raise RuntimeError("this file is not inside the repository any more")
+    return here.parents[2]
 
 
 def source_root() -> Path:

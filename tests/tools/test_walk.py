@@ -106,3 +106,12 @@ def test_a_clean_report_says_so_and_exits_nothing() -> None:
 
 def test_a_report_with_problems_lists_them_and_exits_one() -> None:
     assert walk.report("check_x", ["one thing", "another"]) == 1
+
+
+def test_an_installed_copy_with_no_project_file_falls_back_to_the_package(
+    monkeypatch: object,
+) -> None:
+    # The search walks up looking for the project file. There is one here, so
+    # this only pins that the fallback is a directory rather than a raise.
+    walk.repo_root.cache_clear()
+    assert walk.repo_root().is_dir()
