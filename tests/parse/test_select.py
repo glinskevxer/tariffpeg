@@ -199,3 +199,16 @@ def test_nth_of_type_with_a_word_in_it_is_refused_when_it_is_used() -> None:
 def test_a_compound_the_reader_does_not_understand_is_refused() -> None:
     with pytest.raises(Invalid, match="not a compound"):
         compile_selector("!broken")
+
+
+def test_the_compiled_shapes_are_the_ones_the_reader_builds() -> None:
+    from tariffpeg.parse.select import AttributeTest, Selector, Simple, Step
+
+    selector = compile_selector('article.review[data-id="1"]')
+    assert isinstance(selector, Selector)
+    step = selector.branches[0][0]
+    assert isinstance(step, Step)
+    assert isinstance(step.simple, Simple)
+    assert step.simple.tag == "article"
+    assert step.simple.classes == ("review",)
+    assert step.simple.attributes == (AttributeTest("data-id", "=", "1"),)

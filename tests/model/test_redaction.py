@@ -120,3 +120,19 @@ def test_a_body_with_a_link_still_in_it_does_not_read_as_clean() -> None:
 
 def test_a_redacted_value_reports_a_kind_it_never_saw_as_nothing() -> None:
     assert Redacted("text").count("email") == 0
+
+
+def test_a_name_with_nothing_in_it_produces_no_pattern() -> None:
+    from tariffpeg.model.redaction import name_pattern
+
+    assert name_pattern("   ") is None
+
+
+def test_a_name_pattern_matches_the_whole_name_and_its_parts() -> None:
+    from tariffpeg.model.redaction import name_pattern
+
+    pattern = name_pattern("Ada Lovelace")
+    assert pattern is not None
+    assert pattern.search("Ada Lovelace")
+    assert pattern.search("ada")
+    assert not pattern.search("adamant")

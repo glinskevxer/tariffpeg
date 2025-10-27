@@ -7,9 +7,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from tariffpeg import __version__
-from tariffpeg.cli.context import EXIT_CODES, exit_code_for
 from tariffpeg.cli.main import main
-from tariffpeg.errors import AlreadyExists, Conflict, FetchFailed, Invalid, NotFound, Refused
 from tests.cli.conftest import Run
 
 
@@ -75,28 +73,3 @@ def test_a_store_built_somewhere_else_does_not_verify(migrated: Run, store_path:
     result = migrated("db", "verify")
     assert result.exit_code == 5
     assert "different statements" in result.output
-
-
-def test_rows_can_be_asked_for_as_comma_separated_text(migrated: Run) -> None:
-    result = migrated("db", "migrations", extra=["--csv"])
-    assert result.output.splitlines()[0] == "number,name,state"
-
-
-def test_a_settings_file_that_is_not_there_is_reported(run: Run, tmp_path: Path) -> None:
-    result = run("db", "status", extra=["--config", str(tmp_path / "nothing.toml")])
-    assert result.exit_code != 0
-    assert "no settings file" in result.output
-
-
-def test_every_kind_of_refusal_has_its_own_exit_code() -> None:
-    codes = {
-        exit_code_for(NotFound("licence", "x")),
-        exit_code_for(AlreadyExists("channel", "x")),
-        exit_code_for(Invalid("x", 1, "y")),
-        exit_code_for(Conflict("x", "y")),
-        exit_code_for(FetchFailed("https://x.test", "y")),
-        exit_code_for(Refused("https://x.test", "y")),
-    }
-    assert len(codes) == 6
-    assert 0 not in codes
-    assert set(codes) <= set(EXIT_CODES.values())

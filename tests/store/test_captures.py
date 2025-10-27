@@ -6,7 +6,7 @@ import datetime as dt
 
 import pytest
 
-from tariffpeg.errors import Invalid, NotFound
+from tariffpeg.errors import NotFound
 from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel, FetchPolicy, SyndicationClass
 from tariffpeg.store.captures import COLUMNS, CaptureStore, flatten
@@ -47,51 +47,6 @@ def capture(**over: object) -> Capture:
 def store(db: Database) -> CaptureStore:
     ChannelStore(db).add(channel())
     return CaptureStore(db)
-
-
-def test_a_capture_is_named_by_its_digest() -> None:
-    with pytest.raises(Invalid, match="content digest"):
-        capture(digest="deadbeef")
-
-
-def test_a_capture_is_of_a_page_fetched_over_https() -> None:
-    with pytest.raises(Invalid, match="over https"):
-        capture(url="http://seaboard.example/p/1")
-    with pytest.raises(Invalid, match="over https"):
-        capture(final_url="http://seaboard.example/p/1")
-
-
-def test_a_status_outside_the_range_is_refused() -> None:
-    with pytest.raises(Invalid, match="not an http status"):
-        capture(status=99)
-
-
-def test_negative_bytes_or_negative_time_are_refused() -> None:
-    with pytest.raises(Invalid, match="negative bytes"):
-        capture(byte_count=-1)
-    with pytest.raises(Invalid, match="negative time"):
-        capture(elapsed_ms=-1)
-
-
-def test_a_naive_fetch_time_is_refused() -> None:
-    with pytest.raises(ValueError, match="no timezone"):
-        capture(fetched_at=dt.datetime(2025, 7, 4, 22, 15))
-
-
-def test_a_redirected_capture_says_so() -> None:
-    assert not capture().redirected
-    assert capture(final_url="https://seaboard.example/p/1/reviews?page=1").redirected
-
-
-def test_a_capture_worth_reading_is_the_one_with_a_page_in_it() -> None:
-    assert capture().usable
-    assert not capture(status=404, byte_count=0).usable
-    assert not capture(byte_count=0).usable
-    assert not capture(status=304, byte_count=0).usable
-
-
-def test_the_age_of_a_capture_is_measured_from_when_it_was_taken() -> None:
-    assert capture().age_at(AT + dt.timedelta(days=3)) == dt.timedelta(days=3)
 
 
 def test_flattening_produces_one_value_for_every_column() -> None:

@@ -135,3 +135,11 @@ def test_applying_nothing_gives_nothing() -> None:
     found = apply((), {"lift": notice()})
     assert found.weighed == ()
     assert found.cleared == ()
+
+
+def test_the_applied_evidence_and_its_discounts_are_the_shapes_they_say() -> None:
+    from tariffpeg.triage.remediation import Applied, Discount
+
+    found = apply((weighed_in(7, 2025),), {"lift": notice()})  # type: ignore[arg-type]
+    assert isinstance(found, Applied)
+    assert all(isinstance(item, Discount) for item in found.discounts)

@@ -172,3 +172,12 @@ def test_an_unpaced_request_still_rolls_the_day_over() -> None:
     pacer.record(HOST, at(), paced=False)
     pacer.record(HOST, at(day=13), paced=False)
     assert pacer.spent_today(HOST, at(day=13)) == 1
+
+
+def test_the_state_a_pacer_keeps_starts_empty() -> None:
+    from tariffpeg.fetch.pacer import HostState
+
+    state = Pacer().state(HOST)
+    assert isinstance(state, HostState)
+    assert state.last_request is None
+    assert state.spent == 0

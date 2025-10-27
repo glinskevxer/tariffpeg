@@ -180,3 +180,10 @@ def test_the_profile_and_the_capture_are_carried_onto_the_review(channel: Channe
     assert found.review.profile_key == "seaboard/v1"
     assert found.review.capture_digest == DIGEST
     assert found.review.licence_serial == 4021
+
+
+def test_a_normalised_result_with_nothing_in_it_is_not_ok() -> None:
+    from tariffpeg.normalise.review import Normalised
+
+    assert not Normalised().ok
+    assert Normalised(problems=("x",)).problems == ("x",)

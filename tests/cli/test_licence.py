@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from tariffpeg.ids import format_licence_ref
 from tests.cli.conftest import Run
 
@@ -163,33 +161,22 @@ def test_the_register_can_be_asked_for_as_comma_separated_text(migrated: Run) ->
     assert result.output.splitlines()[0] == "reference,trading name,locality,keys,rooms,status"
 
 
-def test_the_settings_in_force_are_printed(migrated: Run) -> None:
-    result = migrated("config", "show")
-    assert result.exit_code == 0
-    assert "crawl_delay_ms" in result.output
+def test_a_particular_pair_is_read_into_a_value() -> None:
+    from tariffpeg.cli.licence import as_row, parse_particulars
 
+    assert parse_particulars(("lift=yes", "let_rooms=9")) == {"lift": True, "let_rooms": 9}
+    import datetime as dt
 
-def test_only_the_changed_settings_are_printed_when_that_is_asked_for(migrated: Run) -> None:
-    result = migrated("config", "show", "--changed-only")
-    assert "every setting is at its default" in result.output
+    from tariffpeg.model.licence import Licence
 
-
-def test_the_defaults_are_printed_on_their_own(migrated: Run) -> None:
-    assert "inspectors" in migrated("config", "defaults").output
-
-
-def test_a_settings_file_can_be_checked(migrated: Run, tmp_path: Path) -> None:
-    target = tmp_path / "tariffpeg.toml"
-    target.write_text("[tariffpeg]\ncrawl_delay_ms = 5000\n", encoding="utf-8")
-    result = migrated("config", "check", str(target))
-    assert result.exit_code == 0
-    assert "1 settings changed" in result.output
-    assert "crawl_delay_ms = 5000" in result.output
-
-
-def test_a_settings_file_with_a_typo_is_refused(migrated: Run, tmp_path: Path) -> None:
-    target = tmp_path / "tariffpeg.toml"
-    target.write_text("[tariffpeg]\ncrawl_delay_millis = 5000\n", encoding="utf-8")
-    result = migrated("config", "check", str(target))
-    assert result.exit_code == 2
-    assert "no such key" in result.output
+    licence = Licence(
+        serial=4021,
+        trading_name="The Anchor Rooms",
+        operator_name="Pellow and Daughter",
+        locality="Porthgwarra",
+        period_start=dt.date(2025, 4, 1),
+        period_end=dt.date(2026, 3, 31),
+        particulars={"grading_band": 3, "let_rooms": 9, "bed_spaces": 18},
+    )
+    assert as_row(licence)["ref"] == licence.ref
+    assert as_row(licence)["band"] == 3

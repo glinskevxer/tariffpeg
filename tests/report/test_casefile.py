@@ -208,3 +208,13 @@ def test_the_file_says_what_would_raise_a_licence_with_nothing_against_it(
 ) -> None:
     file = build(anchor, (a_review("1", QUIET),), channels, coverage(), [], PACK, AT, captures())
     assert any("one more corroborating voice" in line for line in file.what_would_change_this())
+
+
+def test_a_case_file_and_its_quotations_are_the_shapes_they_say(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    from tariffpeg.report.casefile import CaseFile, Quotation
+
+    file = build(anchor, reviews(), channels, coverage(), [], PACK, AT, captures())
+    assert isinstance(file, CaseFile)
+    assert all(isinstance(item, Quotation) for item in file.quotations)

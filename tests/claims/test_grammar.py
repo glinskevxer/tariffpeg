@@ -151,3 +151,9 @@ def test_the_terms_compile_to_the_shapes_they_say_they_are() -> None:
 
 def test_a_match_with_no_numbers_captures_nothing() -> None:
     assert Match(0, 3).numbers == ()
+
+
+def test_a_compiled_pattern_is_a_pattern() -> None:
+    from tariffpeg.claims.grammar import Pattern
+
+    assert isinstance(compile_pattern("no lift"), Pattern)

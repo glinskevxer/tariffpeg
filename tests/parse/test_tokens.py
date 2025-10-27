@@ -166,3 +166,11 @@ def test_a_blank_run_of_text_reports_itself_as_blank() -> None:
 
 def test_an_empty_page_yields_nothing() -> None:
     assert tokenize("") == []
+
+
+def test_a_tokenizer_can_be_driven_directly() -> None:
+    from tariffpeg.parse.tokens import Tokenizer
+
+    reader = Tokenizer("<p>x</p>")
+    assert reader.position == 0
+    assert reader.tokens() == tokenize("<p>x</p>")

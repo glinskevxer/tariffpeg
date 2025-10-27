@@ -179,3 +179,12 @@ def test_a_raw_review_reports_what_it_is_missing() -> None:
     assert review.missing() == ("channel_review_id", "score")
     assert not review.complete()
     assert RawReview({"channel_review_id": "1", "body": "w", "score": "8"}, "k").complete()
+
+
+def test_an_extraction_with_nothing_in_it_reads_as_empty() -> None:
+    from tariffpeg.parse.extract import Extraction
+
+    found = Extraction()
+    assert found.empty
+    assert found.yielded == 0
+    assert found.next_page == ""

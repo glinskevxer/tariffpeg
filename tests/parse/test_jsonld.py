@@ -124,3 +124,11 @@ def test_several_blocks_on_one_page_are_all_read() -> None:
     )
     assert len(found.blocks) == 3
     assert [review["name"] for review in found.reviews()] == ["a", "b"]
+
+
+def test_a_block_that_parsed_carries_its_objects() -> None:
+    from tariffpeg.parse.jsonld import Block, Structured
+
+    block = Block(0, ({"@type": "Review"},))
+    assert block.ok
+    assert Structured((block,)).blocks[0] is block

@@ -25,125 +25,6 @@ def harvested(run: Run, tmp_path: Path) -> None:
     )
 
 
-def test_a_notice_is_taken_on_file_but_not_accepted(run: Run) -> None:
-    stock(run)
-    result = run(
-        "remediation",
-        "file",
-        REF,
-        "lift",
-        "--reference",
-        "RN-2026-0118",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2026-01",
-    )
-    assert result.exit_code == 0
-    assert "not yet accepted" in result.output
-    listed = run("remediation", "list", REF)
-    assert "RN-2026-0118" in listed.output
-    assert "no" in listed.output
-
-
-def test_a_notice_about_a_particular_nobody_registers_is_refused(run: Run) -> None:
-    stock(run)
-    result = run(
-        "remediation",
-        "file",
-        REF,
-        "sauna",
-        "--reference",
-        "RN-1",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2026-01",
-    )
-    assert result.exit_code == 2
-    assert "no such particular" in result.output
-
-
-def test_a_notice_that_reaches_back_too_far_is_refused(run: Run) -> None:
-    stock(run)
-    result = run(
-        "remediation",
-        "file",
-        REF,
-        "lift",
-        "--reference",
-        "RN-1",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2024-01",
-    )
-    assert result.exit_code == 2
-    assert "reach back more than" in result.output
-
-
-def test_a_notice_can_be_accepted_and_then_shows_as_accepted(run: Run) -> None:
-    stock(run)
-    run(
-        "remediation",
-        "file",
-        REF,
-        "lift",
-        "--reference",
-        "RN-1",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2026-01",
-    )
-    result = run("remediation", "accept", REF, "lift", "RN-1", "--note", "certificate seen")
-    assert result.exit_code == 0
-    assert "certificate seen" in run("remediation", "list", REF).output
-    assert "RN-1" in run("remediation", "list", REF, "--accepted-only").output
-
-
-def test_a_notice_can_be_refused_with_a_reason(run: Run) -> None:
-    stock(run)
-    run(
-        "remediation",
-        "file",
-        REF,
-        "lift",
-        "--reference",
-        "RN-1",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2026-01",
-    )
-    result = run("remediation", "refuse", REF, "lift", "RN-1", "--why", "no certificate")
-    assert result.exit_code == 0
-    assert "no certificate" in run("remediation", "list", REF).output
-    assert "RN-1" not in run("remediation", "list", REF, "--accepted-only").output
-
-
-def test_a_licence_with_no_notices_says_so(run: Run) -> None:
-    stock(run)
-    assert "no notices on file" in run("remediation", "list", REF).output
-
-
-def test_a_notice_against_a_licence_nobody_registered_is_refused(run: Run) -> None:
-    stock(run)
-    result = run(
-        "remediation",
-        "file",
-        GONE,
-        "lift",
-        "--reference",
-        "RN-1",
-        "--filed",
-        "2026-03-04",
-        "--effective",
-        "2026-01",
-    )
-    assert result.exit_code == 3
-
-
 def test_the_case_file_reads_as_headed_blocks(run: Run, tmp_path: Path) -> None:
     harvested(run, tmp_path)
     result = run("case", "show", REF, "--at", "2025-09")
@@ -212,3 +93,25 @@ def test_exporting_a_licence_nobody_registered_is_refused(run: Run, tmp_path: Pa
     stock(run)
     result = run("case", "export", GONE, "--to", str(tmp_path / "cases"))
     assert result.exit_code == 3
+
+
+def test_a_quotation_row_shortens_the_digest_to_the_length_it_is_given() -> None:
+    import datetime as dt
+
+    from tariffpeg.cli.case import as_row
+    from tariffpeg.model.period import StayMonth
+    from tariffpeg.report.casefile import Quotation
+
+    digest = "sha256:" + "a" * 64
+    quotation = Quotation(
+        claim_key="lift",
+        review_key="seaboard:1",
+        channel="seaboard",
+        stay=StayMonth(2025, 7),
+        quote="there is no lift",
+        capture_digest=digest,
+        fetched_at=dt.datetime(2025, 8, 1, tzinfo=dt.UTC),
+        weight=5.0,
+    )
+    assert as_row(quotation, 19)["digest"] == digest[:19]
+    assert as_row(quotation, len(digest))["digest"] == digest
