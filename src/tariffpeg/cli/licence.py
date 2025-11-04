@@ -61,8 +61,20 @@ def licence_group() -> None:
 @click.option("--name", required=True, help="The trading name on the plaque.")
 @click.option("--operator", required=True, help="Who holds the licence.")
 @click.option("--locality", required=True, help="Which village or town it is in.")
-@click.option("--from", "period_start", required=True, type=click.DateTime(["%Y-%m-%d"]))
-@click.option("--to", "period_end", required=True, type=click.DateTime(["%Y-%m-%d"]))
+@click.option(
+    "--from",
+    "period_start",
+    required=True,
+    type=click.DateTime(["%Y-%m-%d"]),
+    help="The day the licence period starts.",
+)
+@click.option(
+    "--to",
+    "period_end",
+    required=True,
+    type=click.DateTime(["%Y-%m-%d"]),
+    help="The day the licence period ends.",
+)
 @click.option("--closed", default="", help="Months the premises shuts, as 1,2,3.")
 @click.option("--particular", "particulars", multiple=True, help="A particular, as key=value.")
 @click.pass_obj
@@ -139,7 +151,13 @@ def show_command(ctx: Context, ref: str) -> None:
 
 @licence_group.command(name="vary")
 @click.argument("ref")
-@click.option("--particular", "particulars", multiple=True, required=True)
+@click.option(
+    "--particular",
+    "particulars",
+    multiple=True,
+    required=True,
+    help="A particular to change, as key=value.",
+)
 @click.pass_obj
 def vary_command(ctx: Context, ref: str, particulars: tuple[str, ...]) -> None:
     """Change what a licence declares."""

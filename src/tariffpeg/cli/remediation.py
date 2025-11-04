@@ -32,7 +32,12 @@ def remediation_group() -> None:
 @click.argument("ref")
 @click.argument("claim")
 @click.option("--reference", required=True, help="The number the notice was filed under.")
-@click.option("--filed", type=click.DateTime(["%Y-%m-%d"]), required=True)
+@click.option(
+    "--filed",
+    type=click.DateTime(["%Y-%m-%d"]),
+    required=True,
+    help="The day the operator filed the notice.",
+)
 @click.option("--effective", required=True, help="The month the work finished, as 2026-01.")
 @click.option("--note", default="", help="What the operator sent with it.")
 @click.pass_obj

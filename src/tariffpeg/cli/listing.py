@@ -45,7 +45,12 @@ def listing_group() -> None:
 @click.argument("channel")
 @click.option("--path", required=True, help="The path on the channel, starting at the root.")
 @click.option("--property-ref", required=True, help="How the channel numbers this property.")
-@click.option("--confirmed", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--confirmed",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day somebody looked at the page, today if left out.",
+)
 @click.option("--note", default="", help="How the listing was confirmed.")
 @click.pass_obj
 def add_command(
@@ -101,7 +106,13 @@ def list_command(ctx: Context, ref: str, channel: str, include_retired: bool) ->
 @listing_group.command(name="confirm")
 @click.argument("ref")
 @click.argument("channel")
-@click.option("--on", "day", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--on",
+    "day",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day to reckon from, today if left out.",
+)
 @click.pass_obj
 def confirm_command(ctx: Context, ref: str, channel: str, day: dt.datetime | None) -> None:
     """Say that somebody has looked at the page and it is still the right one."""
@@ -128,7 +139,13 @@ def retire_command(ctx: Context, ref: str, channel: str, why: str) -> None:
 
 
 @listing_group.command(name="stale")
-@click.option("--on", "day", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--on",
+    "day",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day to reckon from, today if left out.",
+)
 @click.pass_obj
 def stale_command(ctx: Context, day: dt.datetime | None) -> None:
     """List the listings nobody has looked at lately."""

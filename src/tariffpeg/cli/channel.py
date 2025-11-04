@@ -59,9 +59,17 @@ def channel_group() -> None:
 @click.option("--name", required=True, help="What the channel calls itself.")
 @click.option("--url", required=True, help="The https base with no trailing slash.")
 @click.option(
-    "--syndication", default="primary", type=click.Choice([str(c) for c in SyndicationClass])
+    "--syndication",
+    default="primary",
+    type=click.Choice([str(c) for c in SyndicationClass]),
+    help="Whether the channel collects its own reviews or reproduces them.",
 )
-@click.option("--scale", default="ten-point", type=click.Choice(sorted(SCALES)))
+@click.option(
+    "--scale",
+    default="ten-point",
+    type=click.Choice(sorted(SCALES)),
+    help="The published dial this channel scores on.",
+)
 @click.option("--delay", "delay_ms", default=2000, type=int, help="The agreed crawl delay.")
 @click.option("--ceiling", default=300, type=int, help="Requests a day this channel agreed to.")
 @click.option("--window", default="", help="The courtesy window, as 22-6.")

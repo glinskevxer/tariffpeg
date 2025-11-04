@@ -101,7 +101,13 @@ def show_command(ctx: Context, ref: str, at: str) -> None:
 
 @triage_group.command(name="schedule")
 @click.option("--at", "at", default="", help="The month to decide at.")
-@click.option("--on", "on", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the decision is being made on.",
+)
 @click.pass_obj
 def schedule_command(ctx: Context, at: str, on: dt.datetime | None) -> None:
     """Book a visit for everything that needs one."""

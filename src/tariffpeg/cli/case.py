@@ -71,7 +71,13 @@ def quotations_command(ctx: Context, ref: str, at: str) -> None:
 
 @case_group.command(name="export")
 @click.argument("ref")
-@click.option("--to", "directory", required=True, type=click.Path(path_type=Path))
+@click.option(
+    "--to",
+    "directory",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="The directory to write the file and its quotations into.",
+)
 @click.option("--at", "at", default="", help="The month to decide at.")
 @click.pass_obj
 def export_command(ctx: Context, ref: str, directory: Path, at: str) -> None:

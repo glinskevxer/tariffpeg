@@ -51,7 +51,13 @@ def harvest_group() -> None:
 
 @harvest_group.command(name="plan")
 @click.option("--at", "at", default="", help="The month to measure the sample at.")
-@click.option("--on", "on", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the harvest is being run on.",
+)
 @click.option("--skipped", is_flag=True, help="Also say what was left out and why.")
 @click.pass_obj
 def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -> None:
@@ -75,7 +81,13 @@ def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -
 
 
 @harvest_group.command(name="run")
-@click.option("--profiles", "profiles_path", required=True, type=click.Path(path_type=Path))
+@click.option(
+    "--profiles",
+    "profiles_path",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="The file saying how each channel is read.",
+)
 @click.option(
     "--bundle",
     "bundle_path",
@@ -85,7 +97,13 @@ def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -
 )
 @click.option("--live", is_flag=True, help="Actually reach the channels.")
 @click.option("--at", "at", default="", help="The month to measure the sample at.")
-@click.option("--on", "on", type=click.DateTime(["%Y-%m-%d"]), default=None)
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the harvest is being run on.",
+)
 @click.option("--problems", is_flag=True, help="Also print what each page could not read.")
 @click.pass_obj
 def run_command(
