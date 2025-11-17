@@ -22,6 +22,10 @@ COLUMNS = (
 )
 """The remediation columns, in the order the table declares them."""
 
+
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
+
 SELECT = f"SELECT {', '.join(COLUMNS)} FROM remediation"
 
 
@@ -71,10 +75,9 @@ class RemediationStore:
         """Put a notice on file."""
         if self.exists(notice.licence_serial, notice.claim_key, notice.reference):
             raise AlreadyExists("remediation", notice.key)
-        placeholders = ", ".join("?" for _ in COLUMNS)
         with self.db.transaction() as conn:
             conn.execute(
-                f"INSERT INTO remediation ({', '.join(COLUMNS)}) VALUES ({placeholders})",
+                f"INSERT INTO remediation ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                 flatten(notice),
             )
 

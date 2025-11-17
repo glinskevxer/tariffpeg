@@ -40,6 +40,10 @@ COLUMNS = (
 )
 """The review columns, in the order the table declares them."""
 
+
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
+
 SELECT = f"SELECT {', '.join(COLUMNS)} FROM review"
 
 
@@ -104,10 +108,9 @@ class ReviewStore:
         """Hold a review, returning whether it was new."""
         if self.exists(review.key):
             return False
-        placeholders = ", ".join("?" for _ in COLUMNS)
         with self.db.transaction() as conn:
             conn.execute(
-                f"INSERT INTO review ({', '.join(COLUMNS)}) VALUES ({placeholders})",
+                f"INSERT INTO review ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                 flatten(review, first_seen),
             )
         return True

@@ -31,6 +31,13 @@ COLUMNS = (
 """The channel columns, in the order the table declares them."""
 
 
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
+
+ASSIGNMENTS = ", ".join(f"{column} = ?" for column in COLUMNS[1:])
+"""The columns an update writes, which is every one but the key."""
+
+
 def hydrate(row: sqlite3.Row) -> Channel:
     """Build a channel out of a register row."""
     policy = FetchPolicy(
@@ -87,10 +94,9 @@ class ChannelStore:
         """Register a channel."""
         if self.exists(channel.slug):
             raise AlreadyExists("channel", channel.slug)
-        placeholders = ", ".join("?" for _ in COLUMNS)
         with self.db.transaction() as conn:
             conn.execute(
-                f"INSERT INTO channel ({', '.join(COLUMNS)}) VALUES ({placeholders})",
+                f"INSERT INTO channel ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                 flatten(channel),
             )
 
@@ -98,11 +104,10 @@ class ChannelStore:
         """Write agreed terms over the ones already registered."""
         if not self.exists(channel.slug):
             raise NotFound("channel", channel.slug)
-        assignments = ", ".join(f"{column} = ?" for column in COLUMNS[1:])
         values = flatten(channel)
         with self.db.transaction() as conn:
             conn.execute(
-                f"UPDATE channel SET {assignments} WHERE slug = ?",
+                f"UPDATE channel SET {ASSIGNMENTS} WHERE slug = ?",
                 (*values[1:], channel.slug),
             )
 

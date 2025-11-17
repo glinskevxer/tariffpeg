@@ -18,6 +18,13 @@ from tariffpeg.store.db import Database
 COLUMNS = ("licence_serial", "channel", "path", "property_ref", "confirmed_on", "active", "note")
 """The listing columns, in the order the table declares them."""
 
+
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
+
+ASSIGNMENTS = ", ".join(f"{column} = ?" for column in COLUMNS[2:])
+"""The columns an update writes, which is every one but the key."""
+
 SELECT = f"SELECT {', '.join(COLUMNS)} FROM listing"
 
 
@@ -64,11 +71,10 @@ class ListingStore:
         """Record a listing."""
         if self.exists(listing.licence_serial, listing.channel):
             raise AlreadyExists("listing", listing.key)
-        placeholders = ", ".join("?" for _ in COLUMNS)
         try:
             with self.db.transaction() as conn:
                 conn.execute(
-                    f"INSERT INTO listing ({', '.join(COLUMNS)}) VALUES ({placeholders})",
+                    f"INSERT INTO listing ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                     flatten(listing),
                 )
         except sqlite3.IntegrityError as err:
@@ -78,11 +84,10 @@ class ListingStore:
         """Write a listing over the one already recorded."""
         if not self.exists(listing.licence_serial, listing.channel):
             raise NotFound("listing", listing.key)
-        assignments = ", ".join(f"{column} = ?" for column in COLUMNS[2:])
         values = flatten(listing)
         with self.db.transaction() as conn:
             conn.execute(
-                f"UPDATE listing SET {assignments} WHERE licence_serial = ? AND channel = ?",
+                f"UPDATE listing SET {ASSIGNMENTS} WHERE licence_serial = ? AND channel = ?",
                 (*values[2:], listing.licence_serial, listing.channel),
             )
 

@@ -32,6 +32,10 @@ COLUMNS = (
 """The capture columns, in the order the table declares them."""
 
 
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
+
+
 def hydrate(row: sqlite3.Row) -> Capture:
     """Build a capture out of a row."""
     serial = row["licence_serial"]
@@ -87,10 +91,9 @@ class CaptureStore:
         """
         if self.exists(capture.digest):
             return False
-        placeholders = ", ".join("?" for _ in COLUMNS)
         with self.db.transaction() as conn:
             conn.execute(
-                f"INSERT INTO capture ({', '.join(COLUMNS)}) VALUES ({placeholders})",
+                f"INSERT INTO capture ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                 flatten(capture),
             )
         return True
