@@ -187,7 +187,7 @@ def test_a_failed_fetch_still_counts_against_the_ceiling() -> None:
     assert pacer.spent_today("seaboard.example", AT) == 2
 
 
-def test_a_held_outcome_carries_no_page_and_is_not_ok() -> None:
+def test_a_held_outcome_carries_no_page_and_did_not_succeed() -> None:
     held = Outcome(Result.HELD, PAGE, wait_ms=1400)
     assert not held.ok
     assert held.worth_retrying
@@ -200,7 +200,7 @@ def test_a_recorded_robots_file_can_be_read_directly(transport: ReplayTransport)
     assert not rules.allows(AGENT, "/admin/users")
 
 
-def test_a_session_can_be_handed_a_pacer_that_already_knows_things() -> None:
+def test_a_session_can_be_handed_a_pacer_that_has_seen_traffic() -> None:
     replay = ReplayTransport()
     replay.add(ROBOTS, "User-agent: *\n")
     replay.add(PAGE, "page")

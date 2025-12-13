@@ -91,7 +91,7 @@ def test_a_month_tolerance_can_be_widened_when_the_unit_says_so() -> None:
     assert compare(left, right, CHANNELS, rules) is Verdict.SAME
 
 
-def test_reviews_that_say_different_things_are_different() -> None:
+def test_reviews_about_different_matters_are_different_reviews() -> None:
     left = review("seaboard", "1")
     right = review("atlas", "2", body=DIFFERENT)
     assert compare(left, right, CHANNELS) is Verdict.DIFFERENT
@@ -192,7 +192,7 @@ def test_the_quoted_copy_is_stable_across_runs() -> None:
     assert group(list(reversed(reviews)), CHANNELS)[0].leader.key == "atlas:77"
 
 
-def test_grouping_nothing_gives_nothing() -> None:
+def test_grouping_an_empty_set_gives_back_no_clusters() -> None:
     assert group([], CHANNELS) == ()
 
 

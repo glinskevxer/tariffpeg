@@ -115,7 +115,7 @@ def test_two_contradictions_of_equal_weight_come_back_in_a_stable_order() -> Non
     assert [item.review_key for item in found] == ["seaboard:1", "seaboard:9"]
 
 
-def test_weighing_nothing_gives_nothing() -> None:
+def test_weighing_an_empty_set_gives_back_no_weights() -> None:
     assert weigh_all((), STAY) == ()
 
 

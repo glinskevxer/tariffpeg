@@ -63,7 +63,7 @@ def test_a_date_falls_into_the_month_it_is_in() -> None:
     assert StayMonth.of(dt.date(2025, 6, 30)) == StayMonth(2025, 6)
 
 
-def test_the_ordinal_round_trips() -> None:
+def test_the_ordinal_round_trips_back_to_the_month() -> None:
     for month in (StayMonth(2025, 1), StayMonth(2025, 12), StayMonth(2026, 7)):
         assert StayMonth.from_ordinal(month.ordinal) == month
 

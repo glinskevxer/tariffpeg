@@ -29,7 +29,7 @@ def test_a_list_at_the_top_of_a_block_is_flattened() -> None:
     assert [review["name"] for review in found.reviews()] == ["a", "b"]
 
 
-def test_a_graph_is_flattened() -> None:
+def test_a_graph_is_flattened_into_the_objects_in_it() -> None:
     block = '{"@context": "https://schema.org", "@graph": [{"@type": "Review", "name": "a"}]}'
     assert len(read(page(block)).reviews()) == 1
 
@@ -109,7 +109,7 @@ def test_an_object_with_nothing_readable_in_it_comes_back_empty() -> None:
     assert text_of(None) == ""
 
 
-def test_a_list_gives_back_the_first_thing_in_it_that_says_anything() -> None:
+def test_a_list_gives_back_the_first_entry_that_says_anything() -> None:
     assert text_of([{"@type": "Person"}, "Ada"]) == "Ada"
     assert text_of([]) == ""
 

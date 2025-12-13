@@ -48,7 +48,7 @@ def coverage(
     )
 
 
-def test_a_licence_that_is_properly_sampled_is_not_visited(
+def test_a_licence_whose_sample_is_complete_is_not_visited(
     anchor: Licence, channels: dict[str, Channel]
 ) -> None:
     done = coverage(peak_short=0, channels_held=("seaboard", "quayside"))

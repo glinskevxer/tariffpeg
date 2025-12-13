@@ -11,11 +11,11 @@ def source(body: str) -> SourceFile:
     return make_source("tariffpeg/x.py", f'"""x."""\n\n\ndef f() -> None:\n{body}')
 
 
-def test_the_real_tree_raises_its_refusals_properly() -> None:
+def test_the_real_tree_raises_its_refusals_with_the_right_pieces() -> None:
     assert check_errors.problems() == []
 
 
-def test_a_refusal_built_properly_reads_clean(plant: Planter) -> None:
+def test_a_refusal_built_the_right_way_reads_clean(plant: Planter) -> None:
     plant(check_errors, "source_files", [source('    raise Invalid("x", 1, "this will not do")\n')])
     assert check_errors.problems() == []
 

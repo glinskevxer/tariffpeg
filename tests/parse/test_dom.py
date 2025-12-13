@@ -5,7 +5,7 @@ from __future__ import annotations
 from tariffpeg.parse.dom import Element, TextNode, parse
 
 
-def test_a_simple_tree_has_the_shape_of_the_page() -> None:
+def test_a_plain_tree_has_the_shape_of_the_page_it_came_from() -> None:
     root = parse("<div><p>hello</p></div>")
     assert root.tag == "[document]"
     div = root.elements()[0]

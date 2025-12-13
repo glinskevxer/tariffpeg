@@ -131,7 +131,7 @@ def test_notices_for_different_particulars_are_kept_apart() -> None:
     assert sorted(picked) == ["breakfast_included", "lift"]
 
 
-def test_applying_nothing_gives_nothing() -> None:
+def test_applying_a_notice_to_no_evidence_gives_nothing_back() -> None:
     found = apply((), {"lift": notice()})
     assert found.weighed == ()
     assert found.cleared == ()

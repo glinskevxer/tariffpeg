@@ -11,7 +11,7 @@ from tariffpeg.cli.main import main
 from tests.cli.conftest import Run
 
 
-def test_the_version_is_printed() -> None:
+def test_the_version_of_the_package_is_printed() -> None:
     result = CliRunner().invoke(main, ["--version"])
     assert result.exit_code == 0
     assert __version__ in result.output
@@ -55,7 +55,7 @@ def test_the_migrations_are_listed_with_their_state(migrated: Run) -> None:
     assert "register" in result.output
 
 
-def test_a_healthy_store_verifies(migrated: Run) -> None:
+def test_a_healthy_store_verifies_against_itself(migrated: Run) -> None:
     result = migrated("db", "verify")
     assert result.exit_code == 0
     assert "verifies" in result.output

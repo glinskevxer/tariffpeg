@@ -43,7 +43,7 @@ def test_the_database_closes_itself_when_used_as_a_context_manager() -> None:
         store.conn.execute("SELECT 1")
 
 
-def test_closing_twice_is_harmless() -> None:
+def test_closing_the_store_twice_over_is_harmless() -> None:
     store = Database()
     store.close()
     store.close()
@@ -75,7 +75,7 @@ def test_a_nested_transaction_joins_the_outer_one_rather_than_nesting(db: Databa
     assert db.conn.execute("SELECT count(*) FROM scratch").fetchone()[0] == 2
 
 
-def test_a_failure_inside_a_nested_block_rolls_the_whole_thing_back(db: Database) -> None:
+def test_a_failure_inside_a_nested_block_rolls_the_outer_one_back(db: Database) -> None:
     db.conn.execute("CREATE TABLE scratch (n INTEGER)")
     with pytest.raises(RuntimeError), db.transaction() as outer:
         outer.execute("INSERT INTO scratch VALUES (1)")

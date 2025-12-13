@@ -53,7 +53,7 @@ def test_working_days_are_counted_over_the_weekend() -> None:
     assert add_working_days(dt.date(2025, 6, 5), 0) == dt.date(2025, 6, 5)
 
 
-def test_counting_backwards_is_refused() -> None:
+def test_counting_working_days_backwards_is_refused() -> None:
     with pytest.raises(Invalid, match="counted forwards"):
         add_working_days(DECIDED, -1)
 

@@ -187,7 +187,7 @@ def test_contradictions_can_be_grouped_by_the_particular_they_speak_to() -> None
     assert len(grouped["breakfast_included"]) == 1
 
 
-def test_grouping_nothing_gives_nothing() -> None:
+def test_grouping_an_empty_set_gives_back_an_empty_mapping() -> None:
     assert by_claim(()) == {}
 
 

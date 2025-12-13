@@ -49,7 +49,7 @@ def test_closing_a_store_that_was_never_opened_is_harmless(tmp_path: Path) -> No
     Context(database=tmp_path / "evidence.sqlite3").close()
 
 
-def test_closing_twice_is_harmless(tmp_path: Path) -> None:
+def test_closing_the_store_twice_over_is_harmless(tmp_path: Path) -> None:
     ctx = Context(database=tmp_path / "evidence.sqlite3")
     ctx.store()
     ctx.close()

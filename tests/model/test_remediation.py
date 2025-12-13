@@ -61,7 +61,7 @@ def test_a_stay_after_the_work_is_covered_and_one_before_it_is_not() -> None:
     assert not filed.covers(StayMonth(2025, 12))
 
 
-def test_a_notice_starts_unaccepted() -> None:
+def test_a_notice_starts_out_not_yet_accepted() -> None:
     assert not notice().accepted
     assert notice().note == ""
 
