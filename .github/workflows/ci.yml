@@ -1,0 +1,140 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]" -c constraints.txt
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m mypy
+
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]" -c constraints.txt
+      - run: python -m tariffpeg.tools.check_cli
+      - run: python -m tariffpeg.tools.check_docstrings
+      - run: python -m tariffpeg.tools.check_errors
+      - run: python -m tariffpeg.tools.check_gate
+      - run: python -m tariffpeg.tools.check_indexes
+      - run: python -m tariffpeg.tools.check_layers
+      - run: python -m tariffpeg.tools.check_migrations
+      - run: python -m tariffpeg.tools.check_naming
+      - run: python -m tariffpeg.tools.check_sql
+      - run: python -m tariffpeg.tools.check_tests
+
+  generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]" -c constraints.txt
+      - run: python -m tariffpeg.tools.schema_dump --check
+      - run: python -m tariffpeg.tools.build_architecture --check
+      - run: python -m tariffpeg.tools.build_commands --check
+      - run: python -m tariffpeg.tools.build_glossary --check
+      - run: python -m tariffpeg.tools.build_operations --check
+      - run: python -m tariffpeg.tools.build_rules --check
+      - name: writing them again changes nothing
+        run: |
+          python -m tariffpeg.tools.schema_dump
+          python -m tariffpeg.tools.build_architecture
+          python -m tariffpeg.tools.build_commands
+          python -m tariffpeg.tools.build_glossary
+          python -m tariffpeg.tools.build_operations
+          python -m tariffpeg.tools.build_rules
+          git diff --exit-code docs/
+
+  tests:
+    # Three operating systems on purpose. The book of record is a file, and the
+    # things that differ across these are all file things: the SQLite build
+    # python links against, the line endings a csv export writes, and whether a
+    # path with a drive letter round trips.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
+        exclude:
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]" -c constraints.txt
+      - run: python -m pytest -q
+      - name: the sqlite this runner links against
+        run: python -c "import sqlite3; print(sqlite3.sqlite_version)"
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]" -c constraints.txt
+      - run: python -m pytest -q --cov --cov-report=term-missing --cov-fail-under=95
+      - run: python -m tariffpeg.tools.smoke
+
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install build==1.2.2.post1
+      - run: python -m build --wheel --sdist
+      - name: install the wheel into a clean environment and drive the console script
+        run: |
+          python -m venv /tmp/fresh
+          /tmp/fresh/bin/python -m pip install --upgrade pip
+          /tmp/fresh/bin/python -m pip install dist/*.whl
+          /tmp/fresh/bin/tariffpeg --version
+          /tmp/fresh/bin/tariffpeg --db /tmp/ci.sqlite3 db migrate
+          /tmp/fresh/bin/tariffpeg --db /tmp/ci.sqlite3 db status
+          /tmp/fresh/bin/tariffpeg --db /tmp/ci.sqlite3 db verify
+          /tmp/fresh/bin/tariffpeg --db /tmp/ci.sqlite3 licence particulars
+          /tmp/fresh/bin/tariffpeg --db /tmp/ci.sqlite3 config defaults
