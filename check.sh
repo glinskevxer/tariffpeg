@@ -29,6 +29,7 @@ done
 
 run pytest "$PY" -m pytest -q
 run smoke "$PY" -m tariffpeg.tools.smoke --quiet
+run release-check "$PY" -m tariffpeg.tools.release_check
 
 if [ "${#failed[@]}" -gt 0 ]; then
   printf '%d failed: %s\n' "${#failed[@]}" "${failed[*]}"
