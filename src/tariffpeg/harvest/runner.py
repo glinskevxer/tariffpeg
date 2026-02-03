@@ -33,6 +33,7 @@ class StopReport:
     licence_serial: int
     channel: str
     pages_read: int = 0
+    retries: int = 0
     captures: int = 0
     reviews_seen: int = 0
     reviews_new: int = 0
@@ -69,6 +70,11 @@ class RunReport:
     def captures(self) -> int:
         """Return how many captures the run recorded."""
         return sum(stop.captures for stop in self.stops)
+
+    @property
+    def retries_wanted(self) -> int:
+        """Return how many stops asked to be come back to."""
+        return sum(stop.retries for stop in self.stops)
 
     def problems(self) -> tuple[str, ...]:
         """Return every note the run raised, with its stop named."""
@@ -118,15 +124,26 @@ class Runner:
         if profile is None:
             return StopReport(stop.licence_serial, stop.channel, stopped_because="no such profile")
         url = stop.url
+        seen: set[str] = set()
         pages = 0
         captures = 0
-        seen = 0
+        retries = 0
+        found_reviews = 0
         added = 0
         notes: list[str] = []
         because = "read every page that was asked for"
         while pages < stop.pages and url:
+            if url in seen:
+                because = "the channel linked back to a page already read"
+                break
+            seen.add(url)
             at = self.clock.now()
             outcome = self.session.fetch(channel, url, at, profile.key(), stop.licence_serial)
+            if outcome.result is Result.RETRY:
+                retries += 1
+                notes.append(f"{url}: {outcome.reason}, waiting {outcome.wait_ms} ms")
+                because = f"{outcome.result}: {outcome.reason}"
+                break
             if outcome.result is not Result.FETCHED:
                 because = f"{outcome.result}: {outcome.reason}"
                 break
@@ -140,7 +157,7 @@ class Runner:
             notes.extend(found.notes)
             notes.extend(found.dropped)
             for raw in found.reviews:
-                seen += 1
+                found_reviews += 1
                 built = normalise(raw, channel, stop.licence_serial, outcome.capture.digest)
                 notes.extend(built.problems)
                 if built.review is not None and self.reviews.add(built.review, at):
@@ -152,8 +169,9 @@ class Runner:
             licence_serial=stop.licence_serial,
             channel=stop.channel,
             pages_read=pages,
+            retries=retries,
             captures=captures,
-            reviews_seen=seen,
+            reviews_seen=found_reviews,
             reviews_new=added,
             stopped_because=because,
             notes=tuple(notes),

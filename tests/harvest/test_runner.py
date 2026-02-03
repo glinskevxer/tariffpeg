@@ -253,7 +253,15 @@ def test_a_review_that_will_not_normalise_is_reported_and_the_rest_go_in(
 
 
 def test_the_log_line_names_the_licence_the_channel_and_the_count() -> None:
-    line = StopReport(4021, "seaboard", 2, 2, 20, 18, "read every page").line()
+    line = StopReport(
+        licence_serial=4021,
+        channel="seaboard",
+        pages_read=2,
+        captures=2,
+        reviews_seen=20,
+        reviews_new=18,
+        stopped_because="read every page",
+    ).line()
     assert line.startswith("4021 on seaboard: 2 pages, 18 new of 20 seen")
 
 
@@ -262,3 +270,63 @@ def test_a_report_with_no_stops_counts_nothing() -> None:
     assert report.pages_read == 0
     assert report.reviews_new == 0
     assert report.problems() == ()
+
+
+def test_a_page_that_links_back_to_itself_is_read_once(
+    stocked_for_harvest: Database, seaboard_profile: Profile, clock: FixedClock
+) -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE_ONE, page(REVIEWS[:2], PAGE_ONE))
+    built = Runner(
+        stocked_for_harvest,
+        Session(replay),
+        {"seaboard": brisk_channel()},
+        {"seaboard": seaboard_profile},
+        _MovingClock(clock.now()),
+    )
+    report = built.run(Plan((a_stop(pages=6),)))
+    assert report.pages_read == 1
+    assert "linked back to a page already read" in report.stops[0].stopped_because
+    assert replay.times_asked(PAGE_ONE) == 1
+
+
+def test_a_ring_of_pages_that_comes_back_round_is_read_once_each(
+    stocked_for_harvest: Database, seaboard_profile: Profile, clock: FixedClock
+) -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE_ONE, page(REVIEWS[:1], PAGE_TWO))
+    replay.add(PAGE_TWO, page(REVIEWS[1:2], PAGE_ONE))
+    built = Runner(
+        stocked_for_harvest,
+        Session(replay),
+        {"seaboard": brisk_channel()},
+        {"seaboard": seaboard_profile},
+        _MovingClock(clock.now()),
+    )
+    report = built.run(Plan((a_stop(pages=9),)))
+    assert report.pages_read == 2
+    assert "linked back" in report.stops[0].stopped_because
+
+
+def test_a_stop_that_asks_to_be_come_back_to_is_counted(
+    stocked_for_harvest: Database, seaboard_profile: Profile, clock: FixedClock
+) -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE_ONE, "", status=503)
+    report = runner(stocked_for_harvest, replay, seaboard_profile, clock).run(Plan((a_stop(),)))
+    assert report.retries_wanted == 1
+    assert report.stops[0].retries == 1
+    assert any("waiting" in problem for problem in report.problems())
+
+
+def test_a_run_that_finished_asks_to_be_come_back_to_for_nothing(
+    stocked_for_harvest: Database,
+    transport: ReplayTransport,
+    seaboard_profile: Profile,
+    clock: FixedClock,
+) -> None:
+    report = runner(stocked_for_harvest, transport, seaboard_profile, clock).run(Plan((a_stop(),)))
+    assert report.retries_wanted == 0
