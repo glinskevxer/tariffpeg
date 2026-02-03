@@ -162,13 +162,13 @@ def test_a_conditional_request_that_comes_back_unchanged_is_reported_as_such() -
     assert found.capture is None
 
 
-def test_a_page_that_answers_with_an_error_status_is_a_failure() -> None:
+def test_a_page_that_answers_with_a_status_nobody_retries_is_a_failure() -> None:
     replay = ReplayTransport()
     replay.add(ROBOTS, "User-agent: *\n")
-    replay.add(PAGE, "", status=503)
+    replay.add(PAGE, "", status=451)
     found = Session(replay).fetch(channel(), PAGE, AT, "seaboard/v1")
     assert found.result is Result.FAILED
-    assert "status 503" in found.reason
+    assert "status 451" in found.reason
 
 
 def test_a_page_that_will_not_fetch_at_all_is_a_failure() -> None:
@@ -225,3 +225,74 @@ def test_a_response_is_recorded_as_a_capture() -> None:
     assert built.elapsed_ms == 142
     assert built.licence_serial == 4021
     assert built.fetched_at == AT
+
+
+def test_a_channel_answering_with_a_server_error_is_worth_one_more_try() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=503)
+    found = Session(replay).fetch(channel(), PAGE, AT, "seaboard/v1")
+    assert found.result is Result.RETRY
+    assert found.worth_retrying
+    assert found.wait_ms > 0
+    assert "worth one more try" in found.reason
+
+
+def test_a_server_error_that_keeps_happening_stops_being_worth_a_try() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=503)
+    session = Session(replay)
+    session.fetch(channel(), PAGE, AT, "seaboard/v1")
+    found = session.fetch(channel(), PAGE, AT + dt.timedelta(seconds=30), "seaboard/v1")
+    assert found.result is Result.FAILED
+    assert session.attempts(PAGE) == 2
+
+
+def test_a_channel_that_turns_us_away_is_left_alone_for_the_run() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=429)
+    session = Session(replay)
+    first = session.fetch(channel(), PAGE, AT, "seaboard/v1")
+    assert first.result is Result.REFUSED
+    assert "turned us away with a 429" in first.reason
+    assert session.turned_away("seaboard")
+    later = session.fetch(channel(), PAGE, AT + dt.timedelta(hours=2), "seaboard/v1")
+    assert later.result is Result.REFUSED
+    assert replay.times_asked(PAGE) == 1
+
+
+def test_a_forbidden_answer_turns_us_away_the_same_way() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=403)
+    found = Session(replay).fetch(channel(), PAGE, AT, "seaboard/v1")
+    assert found.result is Result.REFUSED
+    assert "403" in found.reason
+
+
+def test_the_wait_a_channel_asked_for_is_carried_through() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=429, headers={"Retry-After": "600"})
+    found = Session(replay).fetch(channel(), PAGE, AT, "seaboard/v1")
+    assert found.wait_ms == 600_000
+    assert found.resume_at == AT + dt.timedelta(minutes=10)
+
+
+def test_a_channel_that_turns_us_away_does_not_stop_another_one() -> None:
+    replay = ReplayTransport()
+    replay.add(ROBOTS, "User-agent: *\n")
+    replay.add(PAGE, "", status=429)
+    replay.add("https://quayside.example/robots.txt", "User-agent: *\n")
+    replay.add("https://quayside.example/p/1", "<html>reviews</html>")
+    session = Session(replay)
+    session.fetch(channel(), PAGE, AT, "seaboard/v1")
+    other = channel(slug="quayside", base_url="https://quayside.example")
+    assert session.fetch(other, "https://quayside.example/p/1", AT, "quayside/v1").ok
+
+
+def test_a_url_nobody_has_asked_for_has_no_attempts_against_it() -> None:
+    assert Session(ReplayTransport()).attempts(PAGE) == 0
+    assert Session(ReplayTransport()).turned_away("seaboard") == ""

@@ -48,6 +48,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 ### fetch
 
+- `tariffpeg.fetch.backoff`
 - `tariffpeg.fetch.bundle`
 - `tariffpeg.fetch.live`
 - `tariffpeg.fetch.pacer`

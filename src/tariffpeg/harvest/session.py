@@ -17,6 +17,8 @@ from enum import StrEnum
 
 from tariffpeg.errors import FetchFailed, Refused
 from tariffpeg.fetch import robots as robots_reader
+from tariffpeg.fetch.backoff import DEFAULT as DEFAULT_BACKOFF
+from tariffpeg.fetch.backoff import TURNED_AWAY, WORTH_ANOTHER_TRY, Backoff, retry_after_ms
 from tariffpeg.fetch.live import host_of
 from tariffpeg.fetch.pacer import Grant, Hold, Pacer
 from tariffpeg.fetch.transport import Request, Response, Transport
@@ -59,6 +61,7 @@ class Result(StrEnum):
     FETCHED = "fetched"
     UNCHANGED = "unchanged"
     HELD = "held"
+    RETRY = "retry"
     REFUSED = "refused"
     FAILED = "failed"
 
@@ -83,16 +86,32 @@ class Outcome:
     @property
     def worth_retrying(self) -> bool:
         """Return whether waiting would help."""
-        return self.result is Result.HELD
+        return self.result in (Result.HELD, Result.RETRY)
 
 
 class Session:
     """One harvest run against one set of channels."""
 
-    def __init__(self, transport: Transport, pacer: Pacer | None = None) -> None:
+    def __init__(
+        self,
+        transport: Transport,
+        pacer: Pacer | None = None,
+        backoff: Backoff = DEFAULT_BACKOFF,
+    ) -> None:
         self.transport = transport
         self.pacer = pacer if pacer is not None else Pacer()
+        self.backoff = backoff
         self._robots: dict[str, robots_reader.Robots] = {}
+        self._turned_away: dict[str, str] = {}
+        self._attempts: dict[str, int] = {}
+
+    def turned_away(self, slug: str) -> str:
+        """Return why a channel is being left alone, or an empty string."""
+        return self._turned_away.get(slug, "")
+
+    def attempts(self, url: str) -> int:
+        """Return how many times this run has asked for a url."""
+        return self._attempts.get(url, 0)
 
     def robots_for(self, channel: Channel, at: dt.datetime) -> robots_reader.Robots:
         """Return the robots file for a channel, fetching it once per session.
@@ -140,6 +159,9 @@ class Session:
         """Ask for one page, obeying the robots file and the agreed terms."""
         if not url.startswith(channel.base_url):
             return Outcome(Result.REFUSED, url, reason="that url is not on this channel")
+        already = self.turned_away(channel.slug)
+        if already:
+            return Outcome(Result.REFUSED, url, reason=already)
         path = url[len(channel.base_url) :] or "/"
         rules = self.robots_for(channel, at)
         if not rules.allows(channel.policy.user_agent, path):
@@ -155,12 +177,30 @@ class Session:
             self.pacer.record(channel.host(), at)
             return Outcome(Result.FAILED, url, reason=str(err))
         self.pacer.record(channel.host(), at)
+        self._attempts[url] = self.attempts(url) + 1
+        if reply.status in TURNED_AWAY:
+            return self._turn_away(channel.slug, url, reply, at)
+        if reply.status in WORTH_ANOTHER_TRY and self.backoff.worth_another(self.attempts(url)):
+            return Outcome(
+                Result.RETRY,
+                url,
+                response=reply,
+                wait_ms=self.backoff.wait_after(self.attempts(url)),
+                reason=f"status {reply.status}, worth one more try",
+            )
         if reply.unchanged:
             return Outcome(Result.UNCHANGED, url, response=reply)
         if not reply.ok:
             return Outcome(Result.FAILED, url, response=reply, reason=f"status {reply.status}")
         capture = capture_of(reply, channel.slug, url, at, profile_key, licence_serial)
         return Outcome(Result.FETCHED, url, response=reply, capture=capture)
+
+    def _turn_away(self, slug: str, url: str, reply: Response, at: dt.datetime) -> Outcome:
+        why = f"{slug} turned us away with a {reply.status} and is left alone for this run"
+        self._turned_away[slug] = why
+        wait = retry_after_ms(reply.headers.get("retry-after"), at)
+        resume = at + dt.timedelta(milliseconds=wait) if wait is not None else None
+        return Outcome(Result.REFUSED, url, wait_ms=wait or 0, resume_at=resume, reason=why)
 
     @staticmethod
     def _held(url: str, grant: Grant) -> Outcome:
