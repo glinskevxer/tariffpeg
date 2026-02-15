@@ -73,7 +73,11 @@ def verify_command(ctx: Context) -> None:
     """Check the store against itself and against this version."""
     store = ctx.store()
     with refusals():
-        problems = [*store.integrity_problems(), *drift(store)]
+        problems = [
+            *store.integrity_problems(),
+            *drift(store),
+            *CaptureStore(store).body_problems(),
+        ]
     if not problems:
         ctx.say("the store verifies")
         return
@@ -87,6 +91,8 @@ def _counts(store: Database) -> list[dict[str, object]]:
         {"what": "licences", "held": len(LicenceStore(store).all())},
         {"what": "channels", "held": len(ChannelStore(store).all())},
         {"what": "captures", "held": CaptureStore(store).count()},
+        {"what": "pages kept", "held": CaptureStore(store).bodies_held()},
+        {"what": "bytes kept", "held": CaptureStore(store).bytes_held()},
         {"what": "reviews", "held": _reviews(store)},
     ]
 

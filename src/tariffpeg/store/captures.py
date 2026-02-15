@@ -12,7 +12,8 @@ import datetime as dt
 import sqlite3
 
 from tariffpeg.clock import isoformat, parse_instant
-from tariffpeg.errors import NotFound
+from tariffpeg.errors import Conflict, NotFound
+from tariffpeg.ids import capture_digest
 from tariffpeg.model.capture import Capture
 from tariffpeg.store.db import Database
 
@@ -145,3 +146,67 @@ class CaptureStore:
             (channel, day.isoformat()),
         ).fetchone()
         return int(row[0])
+
+    def keep_body(self, digest: str, body: bytes, at: dt.datetime) -> None:
+        """Keep the bytes that were served, so the page can be replayed.
+
+        The bytes are checked against the digest before they go in. A body that
+        does not hash to the digest it is filed under is not evidence of
+        anything, and the one place it could be caught is here.
+        """
+        if not self.exists(digest):
+            raise NotFound("capture", digest)
+        if capture_digest(body) != digest:
+            raise Conflict("capture body", "these bytes do not hash to that digest")
+        with self.db.transaction() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+                (digest, body, isoformat(at)),
+            )
+
+    def has_body(self, digest: str) -> bool:
+        """Return whether the bytes for a capture are held."""
+        row = self.db.conn.execute(
+            "SELECT 1 FROM capture_body WHERE digest = ?", (digest,)
+        ).fetchone()
+        return row is not None
+
+    def body_of(self, digest: str) -> bytes:
+        """Return the bytes that were served, or refuse."""
+        row = self.db.conn.execute(
+            "SELECT body FROM capture_body WHERE digest = ?", (digest,)
+        ).fetchone()
+        if row is None:
+            raise NotFound("capture body", digest)
+        return bytes(row["body"])
+
+    def bodies_held(self) -> int:
+        """Return how many captures have their bytes kept."""
+        return int(self.db.conn.execute("SELECT count(*) FROM capture_body").fetchone()[0])
+
+    def bytes_held(self) -> int:
+        """Return how many bytes of pages the store is carrying."""
+        row = self.db.conn.execute("SELECT sum(length(body)) FROM capture_body").fetchone()
+        return int(row[0] or 0)
+
+    def body_problems(self) -> tuple[str, ...]:
+        """Return every kept body that does not hash to the digest it is under.
+
+        Nothing should ever be able to produce one of these. It is checked
+        because a bundle exported from a store with one in it would be a bundle
+        that verifies against itself and against nothing else.
+        """
+        rows = self.db.conn.execute(
+            "SELECT digest, body FROM capture_body ORDER BY digest"
+        ).fetchall()
+        found: list[str] = []
+        for row in rows:
+            actual = capture_digest(bytes(row["body"]))
+            if actual != str(row["digest"]):
+                found.append(f"{row['digest']} is filed against bytes that hash to {actual}")
+        return tuple(found)
+
+    def forget_body(self, digest: str) -> None:
+        """Drop the bytes for a capture, keeping the record that it was fetched."""
+        with self.db.transaction() as conn:
+            conn.execute("DELETE FROM capture_body WHERE digest = ?", (digest,))

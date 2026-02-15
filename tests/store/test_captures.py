@@ -6,7 +6,8 @@ import datetime as dt
 
 import pytest
 
-from tariffpeg.errors import NotFound
+from tariffpeg.errors import Conflict, NotFound
+from tariffpeg.ids import capture_digest
 from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel, FetchPolicy, SyndicationClass
 from tariffpeg.store.captures import COLUMNS, CaptureStore, flatten
@@ -121,3 +122,99 @@ def test_a_capture_for_a_channel_that_is_not_registered_is_refused(db: Database)
 
     with pytest.raises(sqlite3.IntegrityError):
         CaptureStore(db).record(capture())
+
+
+def test_the_bytes_that_were_served_can_be_kept(store: CaptureStore) -> None:
+    body = b"<html>the page as it was served</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    assert store.has_body(held.digest)
+    assert store.body_of(held.digest) == body
+
+
+def test_bytes_that_do_not_hash_to_the_digest_are_refused(store: CaptureStore) -> None:
+    store.record(capture())
+    with pytest.raises(Conflict, match="do not hash to that digest"):
+        store.keep_body(capture().digest, b"something else", AT)
+
+
+def test_bytes_for_a_capture_nobody_took_are_refused(store: CaptureStore) -> None:
+    body = b"page"
+    with pytest.raises(NotFound, match="capture"):
+        store.keep_body(capture_digest(body), body, AT)
+
+
+def test_asking_for_bytes_nobody_kept_is_refused(store: CaptureStore) -> None:
+    store.record(capture())
+    assert not store.has_body(capture().digest)
+    with pytest.raises(NotFound, match="capture body"):
+        store.body_of(capture().digest)
+
+
+def test_keeping_the_same_bytes_twice_is_harmless(store: CaptureStore) -> None:
+    body = b"<html>page</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    store.keep_body(held.digest, body, AT + dt.timedelta(days=1))
+    assert store.bodies_held() == 1
+
+
+def test_the_store_says_how_many_pages_and_bytes_it_is_carrying(
+    store: CaptureStore,
+) -> None:
+    assert store.bodies_held() == 0
+    assert store.bytes_held() == 0
+    body = b"<html>page</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    assert store.bodies_held() == 1
+    assert store.bytes_held() == len(body)
+
+
+def test_a_healthy_store_has_no_bodies_filed_under_the_wrong_digest(
+    store: CaptureStore,
+) -> None:
+    body = b"<html>page</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    assert store.body_problems() == ()
+
+
+def test_a_body_filed_under_the_wrong_digest_is_reported(store: CaptureStore) -> None:
+    store.record(capture())
+    store.db.conn.execute(
+        "INSERT INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+        (capture().digest, b"not the page", "2025-07-04T22:15:00Z"),
+    )
+    problems = store.body_problems()
+    assert len(problems) == 1
+    assert "filed against bytes that hash to" in problems[0]
+
+
+def test_the_bytes_can_be_dropped_and_the_record_of_the_fetch_kept(
+    store: CaptureStore,
+) -> None:
+    body = b"<html>page</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    store.forget_body(held.digest)
+    assert not store.has_body(held.digest)
+    assert store.exists(held.digest)
+
+
+def test_dropping_bytes_nobody_kept_is_harmless(store: CaptureStore) -> None:
+    store.forget_body("sha256:" + "f" * 64)
+
+
+def test_dropping_a_capture_takes_its_bytes_with_it(store: CaptureStore) -> None:
+    body = b"<html>page</html>"
+    held = capture(digest=capture_digest(body))
+    store.record(held)
+    store.keep_body(held.digest, body, AT)
+    store.db.conn.execute("DELETE FROM capture WHERE digest = ?", (held.digest,))
+    assert store.bodies_held() == 0

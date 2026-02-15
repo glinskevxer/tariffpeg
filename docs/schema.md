@@ -151,3 +151,21 @@ Digest `4498940b8a98f4c2`.
 | index | on | columns | unique |
 | --- | --- | --- | --- |
 | `remediation_licence` | `remediation` | licence_serial, accepted | no |
+
+## 005 bodies
+
+Digest `52018552012a6f60`.
+
+### `capture_body`
+
+| column | type | and |
+| --- | --- | --- |
+| `digest` | TEXT | PRIMARY KEY REFERENCES capture(digest) ON DELETE CASCADE |
+| `body` | BLOB | NOT NULL |
+| `stored_at` | TEXT | NOT NULL |
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `capture_body_stored` | `capture_body` | stored_at | no |

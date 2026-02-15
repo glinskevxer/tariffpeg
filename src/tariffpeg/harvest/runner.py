@@ -152,6 +152,7 @@ class Runner:
             pages += 1
             if self.captures.record(outcome.capture):
                 captures += 1
+            self.captures.keep_body(outcome.capture.digest, outcome.response.body, at)
             found = extract(profile, parse(outcome.response.text()), outcome.response.url)
             self.watch.record(profile.key(), Reading.of(found, url))
             notes.extend(found.notes)

@@ -176,6 +176,20 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX remediation_licence ON remediation(licence_serial, accepted)",
         ),
     ),
+    Migration(
+        5,
+        "bodies",
+        (
+            """
+            CREATE TABLE capture_body (
+                digest    TEXT PRIMARY KEY REFERENCES capture(digest) ON DELETE CASCADE,
+                body      BLOB NOT NULL,
+                stored_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX capture_body_stored ON capture_body(stored_at)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 
