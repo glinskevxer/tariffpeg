@@ -92,3 +92,21 @@ def export_command(ctx: Context, ref: str, directory: Path, at: str) -> None:
     quotations = directory / f"{licence.ref}-quotations.csv"
     quotations.write_text(as_csv(rows, QUOTATION_COLUMNS), encoding="utf-8", newline="\n")
     ctx.say(f"wrote {document}", f"wrote {quotations}")
+
+
+@case_group.command(name="bundle")
+@click.argument("ref")
+@click.option(
+    "--to",
+    "directory",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="The directory to write the bundle into.",
+)
+@click.pass_obj
+def bundle_command(ctx: Context, ref: str, directory: Path) -> None:
+    """Write the pages behind a licence out as a bundle the fetcher can replay."""
+    with refusals():
+        licence = LicenceStore(ctx.store()).by_ref(ref)
+        index, written = service.bundle_for(ctx.store(), licence.serial, directory)
+    ctx.say(f"wrote {written} pages and {index}")

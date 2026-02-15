@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Mapping
+from pathlib import Path
 
 from tariffpeg.claims.pack import PACK
 from tariffpeg.claims.rules import RulePack
 from tariffpeg.dedupe.syndication import DEFAULT_RULES, SyndicationRules
+from tariffpeg.errors import Invalid
+from tariffpeg.fetch.bundle import INDEX
 from tariffpeg.harvest.plan import Plan
 from tariffpeg.harvest.plan import build as build_plan
 from tariffpeg.model.capture import Capture
@@ -33,6 +36,9 @@ from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.remediations import RemediationStore
 from tariffpeg.store.reviews import ReviewStore
 from tariffpeg.triage.disposition import Decision, Thresholds
+
+NEWLINE = chr(10)
+"""What the bundle index is written with, whatever platform writes it."""
 
 
 def channels(db: Database) -> dict[str, Channel]:
@@ -135,3 +141,35 @@ def decisions(
     ]
     out.sort(key=lambda decision: (-decision.score, decision.licence_serial))
     return tuple(out)
+
+
+def bundle_for(db: Database, serial: int, directory: Path) -> tuple[Path, int]:
+    """Write the pages behind a licence out as a bundle, and say how many went.
+
+    The bundle is the same shape the fetcher reads, so the whole pipeline can be
+    run again against it years later with no network. A capture whose bytes were
+    never kept is left out and the index says nothing about it, because a bundle
+    that claims to hold a page it does not have is worse than a short one.
+    """
+    captures = CaptureStore(db)
+    directory.mkdir(parents=True, exist_ok=True)
+    entries: list[str] = []
+    written = 0
+    for capture in captures.for_licence(serial):
+        if not captures.has_body(capture.digest):
+            continue
+        name = f"{capture.digest.removeprefix('sha256:')[:16]}.html"
+        (directory / name).write_bytes(captures.body_of(capture.digest))
+        entries.append("[[page]]")
+        entries.append(f'url = "{capture.url}"')
+        entries.append(f'body = "{name}"')
+        entries.append(f"status = {capture.status}")
+        if capture.etag:
+            entries.append(f'etag = "{capture.etag}"')
+        entries.append("")
+        written += 1
+    if not written:
+        raise Invalid("bundle", serial, "no pages behind this licence have been kept")
+    index = directory / INDEX
+    index.write_text(NEWLINE.join(entries).rstrip() + NEWLINE, encoding="utf-8", newline=NEWLINE)
+    return index, written

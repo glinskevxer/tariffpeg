@@ -6,6 +6,15 @@
 
 Build the file an inspector is handed.
 
+### `tariffpeg case bundle`
+
+Write the pages behind a licence out as a bundle the fetcher can replay.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+| `--to` | required | The directory to write the bundle into. |
+
 ### `tariffpeg case export`
 
 Write the case file and its quotations out as files.

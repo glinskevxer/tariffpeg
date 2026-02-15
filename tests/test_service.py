@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import pytest
 
@@ -152,3 +153,31 @@ def test_a_licence_that_is_not_active_reaches_the_plan_so_it_can_be_reported(
     plan = service.plan(wired, AT, ON)
     assert plan.stops == ()
     assert plan.skipped == ("4021: the licence is lapsed",)
+
+
+def test_the_bundle_writer_leaves_out_a_capture_whose_bytes_were_never_kept(
+    wired: Database, tmp_path: Path
+) -> None:
+    from tariffpeg.errors import Invalid
+
+    with pytest.raises(Invalid, match="no pages behind this licence"):
+        service.bundle_for(wired, 4021, tmp_path / "out")
+
+
+def test_the_bundle_writer_writes_an_index_and_the_pages(wired: Database, tmp_path: Path) -> None:
+    from tariffpeg.fetch.bundle import INDEX, load
+    from tariffpeg.store.captures import CaptureStore
+
+    body = b"<html>the page as it was served</html>"
+    store = CaptureStore(wired)
+    store.record(a_capture(DIGEST))
+    wired.conn.execute("UPDATE capture SET digest = ? WHERE digest = ?", (DIGEST, DIGEST))
+    store.db.conn.execute(
+        "INSERT INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+        (DIGEST, body, "2025-07-04T22:15:00Z"),
+    )
+    out = tmp_path / "out"
+    index, written = service.bundle_for(wired, 4021, out)
+    assert index == out / INDEX
+    assert written == 1
+    assert load(out).known() == ("https://seaboard.example/p/1/reviews",)
