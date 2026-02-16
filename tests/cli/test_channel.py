@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tariffpeg.cli.channel import parse_window
@@ -154,3 +156,97 @@ def test_a_channel_row_carries_the_agreed_terms() -> None:
     row = as_row(channel)
     assert row["delay"] == 1500
     assert row["window"] == "22-6"
+
+
+def probe_bundle(root: Path, robots: str, status: int = 200) -> Path:
+    """Write a bundle carrying one robots file and return its directory."""
+    from tariffpeg.fetch.bundle import INDEX
+
+    directory = root / "probe"
+    directory.mkdir()
+    (directory / "robots.txt").write_text(robots, encoding="utf-8")
+    (directory / INDEX).write_text(
+        '[[page]]\nurl = "https://seaboard.example/robots.txt"\n'
+        f'body = "robots.txt"\nstatus = {status}\n',
+        encoding="utf-8",
+    )
+    return directory
+
+
+def test_a_probe_sets_the_published_delay_against_the_agreed_one(
+    migrated: Run, tmp_path: Path
+) -> None:
+    migrated(*ADD_CHANNEL)
+    bundle = probe_bundle(tmp_path, "User-agent: *\nCrawl-delay: 30\n")
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert result.exit_code == 0
+    assert "crawl delay in ms" in result.output
+    assert "30000" in result.output
+
+
+def test_a_probe_says_the_agreed_delay_stands_when_none_is_published(
+    migrated: Run, tmp_path: Path
+) -> None:
+    migrated(*ADD_CHANNEL)
+    bundle = probe_bundle(tmp_path, "User-agent: *\n")
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "none" in result.output
+    assert "1500" in result.output
+
+
+def test_a_probe_lists_the_sitemaps_a_channel_publishes(migrated: Run, tmp_path: Path) -> None:
+    robots = "User-agent: *\nSitemap: https://seaboard.example/sitemap.xml\n"
+    migrated(*ADD_CHANNEL)
+    bundle = probe_bundle(tmp_path, robots)
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "sitemaps: https://seaboard.example/sitemap.xml" in result.output
+
+
+def test_a_probe_says_which_of_our_pages_the_robots_file_disallows(
+    migrated: Run, tmp_path: Path
+) -> None:
+    migrated(*ADD_CHANNEL)
+    migrated(*ADD_LICENCE)
+    migrated(*ADD_LISTING)
+    bundle = probe_bundle(tmp_path, "User-agent: *\nDisallow: /property\n")
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "DISALLOWED" in result.output
+    assert "/property/anchor-rooms/reviews" in result.output
+
+
+def test_a_probe_says_when_our_pages_are_allowed(migrated: Run, tmp_path: Path) -> None:
+    migrated(*ADD_CHANNEL)
+    migrated(*ADD_LICENCE)
+    migrated(*ADD_LISTING)
+    bundle = probe_bundle(tmp_path, "User-agent: *\nDisallow: /admin\n")
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "allowed" in result.output
+    assert "DISALLOWED" not in result.output
+
+
+def test_a_probe_of_a_channel_with_no_listings_says_so(migrated: Run, tmp_path: Path) -> None:
+    migrated(*ADD_CHANNEL)
+    bundle = probe_bundle(tmp_path, "User-agent: *\n")
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "no listings are recorded on this channel" in result.output
+
+
+def test_a_probe_says_when_the_channel_could_not_serve_its_robots_file(
+    migrated: Run, tmp_path: Path
+) -> None:
+    migrated(*ADD_CHANNEL)
+    bundle = probe_bundle(tmp_path, "", status=500)
+    result = migrated("channel", "probe", "seaboard", "--bundle", str(bundle))
+    assert "could not serve its robots file" in result.output
+
+
+def test_a_probe_with_no_transport_named_is_refused(migrated: Run) -> None:
+    migrated(*ADD_CHANNEL)
+    result = migrated("channel", "probe", "seaboard")
+    assert result.exit_code == 2
+    assert "--bundle to replay or --live" in result.output
+
+
+def test_a_probe_of_a_channel_nobody_registered_is_refused(migrated: Run, tmp_path: Path) -> None:
+    bundle = probe_bundle(tmp_path, "User-agent: *\n")
+    assert migrated("channel", "probe", "nowhere", "--bundle", str(bundle)).exit_code == 3

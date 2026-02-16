@@ -131,3 +131,31 @@ def test_the_month_falls_back_to_the_one_the_clock_is_in() -> None:
     )
     assert month_or_now("", ctx) == StayMonth(2025, 9)
     assert month_or_now("2024-02", ctx) == StayMonth(2024, 2)
+
+
+def test_reaching_the_network_because_nobody_said_not_to_is_refused() -> None:
+    import pytest as _pytest
+
+    from tariffpeg.cli.harvest import transport_for
+    from tariffpeg.errors import Invalid
+
+    with _pytest.raises(Invalid, match="--bundle to replay or --live"):
+        transport_for(None, False)
+
+
+def test_asking_for_both_a_bundle_and_the_network_is_refused(tmp_path: Path) -> None:
+    import pytest as _pytest
+
+    from tariffpeg.cli.harvest import transport_for
+    from tariffpeg.errors import Invalid
+
+    with _pytest.raises(Invalid, match="not both"):
+        transport_for(tmp_path, True)
+
+
+def test_a_bundle_gives_back_a_transport_that_answers_out_of_it(tmp_path: Path) -> None:
+    from tariffpeg.cli.harvest import transport_for
+    from tariffpeg.fetch.replay import ReplayTransport
+
+    bundle = write_bundle(tmp_path)
+    assert isinstance(transport_for(bundle, False), ReplayTransport)

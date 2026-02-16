@@ -72,6 +72,16 @@ List the registered channels.
 | --- | --- | --- |
 | `--syndication` |  | Only channels of this kind. |
 
+### `tariffpeg channel probe`
+
+Read a channel robots file and set it against the terms agreed with us.
+
+| what | and | why |
+| --- | --- | --- |
+| `slug` | argument |  |
+| `--bundle` |  | Read from a recorded bundle instead of the network. |
+| `--live` |  | Actually reach the channel. |
+
 ### `tariffpeg channel remove`
 
 Take a channel off the register.

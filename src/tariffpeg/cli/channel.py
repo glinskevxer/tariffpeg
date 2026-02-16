@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 
 from tariffpeg.cli.context import Context, refusals
+from tariffpeg.cli.harvest import transport_for
 from tariffpeg.errors import Invalid
+from tariffpeg.harvest.session import Session
 from tariffpeg.model.channel import ALWAYS, Channel, CourtesyWindow, FetchPolicy, SyndicationClass
 from tariffpeg.model.scale import SCALES
 from tariffpeg.report.rows import Column
 from tariffpeg.store.channels import ChannelStore
+from tariffpeg.store.listings import ListingStore
 
 COLUMNS = (
     Column("slug", "slug"),
@@ -152,3 +157,63 @@ def remove_command(ctx: Context, slug: str) -> None:
     with refusals():
         ChannelStore(ctx.store()).remove(slug)
     ctx.say(f"{slug} removed")
+
+
+PROBE_COLUMNS = (
+    Column("term", "term"),
+    Column("agreed", "agreed with us"),
+    Column("published", "published"),
+    Column("inforce", "in force"),
+)
+
+
+@channel_group.command(name="probe")
+@click.argument("slug")
+@click.option(
+    "--bundle",
+    "bundle_path",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Read from a recorded bundle instead of the network.",
+)
+@click.option("--live", is_flag=True, help="Actually reach the channel.")
+@click.pass_obj
+def probe_command(ctx: Context, slug: str, bundle_path: Path | None, live: bool) -> None:
+    """Read a channel robots file and set it against the terms agreed with us."""
+    with refusals():
+        channel = ChannelStore(ctx.store()).get(slug)
+        session = Session(transport_for(bundle_path, live))
+        at = ctx.clock.now()
+        rules = session.robots_for(channel, at)
+        agent = channel.policy.user_agent
+        published = rules.crawl_delay_ms(agent)
+        listings = ListingStore(ctx.store()).on_channel(slug)
+    ctx.say(f"{channel.slug}  {channel.robots_url()}")
+    if rules.unparseable:
+        ctx.say("the channel could not serve its robots file, so nothing may be read")
+    ctx.say("")
+    rows = [
+        {
+            "term": "crawl delay in ms",
+            "agreed": channel.policy.crawl_delay_ms,
+            "published": "none" if published is None else published,
+            "inforce": channel.policy.delay_with(published),
+        },
+        {
+            "term": "requests a day",
+            "agreed": channel.policy.daily_request_ceiling,
+            "published": "none",
+            "inforce": channel.policy.daily_request_ceiling,
+        },
+    ]
+    ctx.emit(rows, PROBE_COLUMNS)
+    ctx.say("")
+    if rules.sitemaps:
+        ctx.say("sitemaps: " + ", ".join(rules.sitemaps))
+    if not listings:
+        ctx.say("no listings are recorded on this channel")
+        return
+    ctx.say("what the robots file says about the pages we read:")
+    for listing in listings:
+        allowed = "allowed" if rules.allows(agent, listing.path) else "DISALLOWED"
+        ctx.say(f"  {listing.licence_serial} {listing.path}: {allowed}")

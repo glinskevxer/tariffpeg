@@ -117,7 +117,7 @@ def run_command(
 ) -> None:
     """Read the channels and put what comes back into the store."""
     with refusals():
-        transport = _transport(bundle_path, live)
+        transport = transport_for(bundle_path, live)
         profiles = by_channel(load_profiles(profiles_path))
         month = month_or_now(at, ctx)
         day = on.date() if on else ctx.clock.now().date()
@@ -149,7 +149,12 @@ def run_command(
         ctx.say(*report.problems())
 
 
-def _transport(bundle_path: Path | None, live: bool) -> Transport:
+def transport_for(bundle_path: Path | None, live: bool) -> Transport:
+    """Return the transport a command was told to use, or refuse to guess.
+
+    Neither flag means no transport. Reaching the network because nobody said
+    not to is the one thing this package will not do.
+    """
     if bundle_path is not None and live:
         raise Invalid("bundle", str(bundle_path), "read from a bundle or the network, not both")
     if bundle_path is not None:
