@@ -190,6 +190,26 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX capture_body_stored ON capture_body(stored_at)",
         ),
     ),
+    Migration(
+        6,
+        "operator",
+        (
+            """
+            CREATE TABLE operator (
+                ref           TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                contact_name  TEXT NOT NULL,
+                email         TEXT NOT NULL,
+                address       TEXT NOT NULL,
+                registered_on TEXT NOT NULL,
+                note          TEXT NOT NULL DEFAULT ''
+            )
+            """,
+            "ALTER TABLE licence ADD COLUMN operator_ref TEXT NOT NULL DEFAULT ''",
+            "CREATE INDEX licence_operator ON licence(operator_ref)",
+            "CREATE INDEX operator_name ON operator(name)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 

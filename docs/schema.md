@@ -169,3 +169,26 @@ Digest `52018552012a6f60`.
 | index | on | columns | unique |
 | --- | --- | --- | --- |
 | `capture_body_stored` | `capture_body` | stored_at | no |
+
+## 006 operator
+
+Digest `269776a0e609a8bc`.
+
+### `operator`
+
+| column | type | and |
+| --- | --- | --- |
+| `ref` | TEXT | PRIMARY KEY |
+| `name` | TEXT | NOT NULL |
+| `contact_name` | TEXT | NOT NULL |
+| `email` | TEXT | NOT NULL |
+| `address` | TEXT | NOT NULL |
+| `registered_on` | TEXT | NOT NULL |
+| `note` | TEXT | NOT NULL DEFAULT '' |
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `licence_operator` | `licence` | operator_ref | no |
+| `operator_name` | `operator` | name | no |

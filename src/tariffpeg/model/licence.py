@@ -43,6 +43,7 @@ class Licence:
     particulars: Mapping[str, bool | int]
     closed_months: frozenset[int] = field(default_factory=frozenset)
     status: LicenceStatus = LicenceStatus.ACTIVE
+    operator_ref: str = ""
 
     def __post_init__(self) -> None:
         if not self.trading_name.strip():
@@ -130,3 +131,13 @@ class Licence:
     def with_status(self, status: LicenceStatus) -> Licence:
         """Return a copy in a new status."""
         return replace(self, status=status)
+
+    def with_operator(self, ref: str) -> Licence:
+        """Return a copy tied to an operator on the register.
+
+        The operator name stays on the licence as it was written when the
+        licence was granted. The reference is what a letter follows, and the two
+        are allowed to differ because operators change their trading style far
+        more often than they change who they are.
+        """
+        return replace(self, operator_ref=ref)

@@ -26,8 +26,12 @@ COLUMNS = (
     "period_end",
     "closed_months",
     "status",
+    "operator_ref",
 )
 """The licence columns, in the order the table declares them."""
+
+PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
+"""One question mark per column, for an insert."""
 
 
 def encode_months(months: Iterable[int]) -> str:
@@ -84,6 +88,7 @@ class LicenceStore:
             particulars=self._particulars(serial),
             closed_months=decode_months(str(row["closed_months"])),
             status=LicenceStatus(str(row["status"])),
+            operator_ref=str(row["operator_ref"]),
         )
 
     def _write_particulars(self, conn: sqlite3.Connection, licence: Licence) -> None:
@@ -106,7 +111,7 @@ class LicenceStore:
             raise AlreadyExists("licence", licence.ref)
         with self.db.transaction() as conn:
             conn.execute(
-                f"INSERT INTO licence ({', '.join(COLUMNS)}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                f"INSERT INTO licence ({', '.join(COLUMNS)}) VALUES ({PLACEHOLDERS})",
                 (
                     licence.serial,
                     licence.trading_name,
@@ -116,6 +121,7 @@ class LicenceStore:
                     licence.period_end.isoformat(),
                     encode_months(licence.closed_months),
                     str(licence.status),
+                    licence.operator_ref,
                 ),
             )
             self._write_particulars(conn, licence)
@@ -127,7 +133,8 @@ class LicenceStore:
         with self.db.transaction() as conn:
             conn.execute(
                 "UPDATE licence SET trading_name = ?, operator_name = ?, locality = ?,"
-                " period_start = ?, period_end = ?, closed_months = ?, status = ?"
+                " period_start = ?, period_end = ?, closed_months = ?, status = ?,"
+                " operator_ref = ?"
                 " WHERE serial = ?",
                 (
                     licence.trading_name,
@@ -137,6 +144,7 @@ class LicenceStore:
                     licence.period_end.isoformat(),
                     encode_months(licence.closed_months),
                     str(licence.status),
+                    licence.operator_ref,
                     licence.serial,
                 ),
             )
@@ -197,6 +205,14 @@ class LicenceStore:
                 (key, encode_value(key, value)),
             ).fetchall()
         return tuple(self.get(int(row["serial"])) for row in rows)
+
+    def for_operator(self, ref: str) -> tuple[Licence, ...]:
+        """Return the licences one operator holds, by serial."""
+        rows = self.db.conn.execute(
+            f"SELECT {', '.join(COLUMNS)} FROM licence WHERE operator_ref = ? ORDER BY serial",
+            (ref,),
+        ).fetchall()
+        return tuple(self._hydrate(row) for row in rows)
 
     def counts_by_status(self) -> Mapping[str, int]:
         """Return how many licences sit in each status."""
