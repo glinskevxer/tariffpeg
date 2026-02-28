@@ -292,6 +292,68 @@ List the listings nobody has looked at lately.
 | --- | --- | --- |
 | `--on` |  | The day to reckon from, today if left out. |
 
+## `tariffpeg operator`
+
+Look after the register of who holds the licences.
+
+### `tariffpeg operator add`
+
+Put an operator on the register.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+| `--name` | required | The name on the licence. |
+| `--contact` | required | The person a letter is addressed to. |
+| `--email` | required | Where a letter goes. |
+| `--address` | required | The address on the register. |
+| `--registered` |  | The day they joined the register, today if left out. |
+| `--note` |  | Anything the unit wants on the file. |
+
+### `tariffpeg operator contact`
+
+Change who a letter to this operator is addressed to.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+| `--contact` | required | The person a letter is addressed to. |
+| `--email` | required | Where a letter goes. |
+
+### `tariffpeg operator hold`
+
+Tie a licence to an operator on the register.
+
+| what | and | why |
+| --- | --- | --- |
+| `licence_ref` | argument |  |
+| `operator_ref` | argument |  |
+
+### `tariffpeg operator list`
+
+List the operators on the register.
+
+| what | and | why |
+| --- | --- | --- |
+| `--holding` |  | Only those holding more than this many. |
+
+### `tariffpeg operator remove`
+
+Take an operator off the register, if they hold nothing.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+| `--yes` |  | Confirm the action without prompting. |
+
+### `tariffpeg operator show`
+
+Print one operator and the licences they hold.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+
 ## `tariffpeg remediation`
 
 Look after the notices operators file.
