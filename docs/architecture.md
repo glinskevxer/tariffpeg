@@ -131,6 +131,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.cli.context`
 - `tariffpeg.cli.db`
 - `tariffpeg.cli.harvest`
+- `tariffpeg.cli.letter`
 - `tariffpeg.cli.licence`
 - `tariffpeg.cli.listing`
 - `tariffpeg.cli.main`

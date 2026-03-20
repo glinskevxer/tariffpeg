@@ -40,8 +40,15 @@ def test_the_options_of_a_command_are_listed_with_their_help() -> None:
 
 
 def test_a_required_option_is_marked_as_required() -> None:
-    lines = [line for line in build_commands.text().splitlines() if "`--operator`" in line]
+    lines = [line for line in build_commands.text().splitlines() if "`--property-ref`" in line]
+    assert len(lines) == 1
     assert "required" in lines[0]
+
+
+def test_an_option_that_is_not_required_is_not_marked_as_one() -> None:
+    lines = [line for line in build_commands.text().splitlines() if "`--changed-only`" in line]
+    assert len(lines) == 1
+    assert "required" not in lines[0]
 
 
 def test_an_argument_is_listed_as_an_argument() -> None:

@@ -170,6 +170,50 @@ Read the channels and put what comes back into the store.
 | `--on` |  | The day the harvest is being run on. |
 | `--problems` |  | Also print what each page could not read. |
 
+## `tariffpeg letter`
+
+Look after what the unit sent and what came back.
+
+### `tariffpeg letter list`
+
+List what has gone out.
+
+| what | and | why |
+| --- | --- | --- |
+| `--licence` |  | Only letters about this licence. |
+| `--operator` |  | Only letters to this operator. |
+| `--unanswered` |  | Only the ones nobody has answered. |
+
+### `tariffpeg letter overdue`
+
+List the letters nobody has answered in time.
+
+| what | and | why |
+| --- | --- | --- |
+| `--on` |  | The day to reckon from, today if left out. |
+
+### `tariffpeg letter reply`
+
+Record that the operator answered.
+
+| what | and | why |
+| --- | --- | --- |
+| `reference` | argument |  |
+| `--on` |  | The day the reply came, today if left out. |
+
+### `tariffpeg letter send`
+
+Record that a letter went out to the operator of a licence.
+
+| what | and | why |
+| --- | --- | --- |
+| `reference` | argument |  |
+| `licence_ref` | argument |  |
+| `--kind` | required | What kind of letter it is. |
+| `--subject` | required | What the letter is about. |
+| `--body` | required | The text that went out, so it can be digested. |
+| `--on` |  | The day it went, today if left out. |
+
 ## `tariffpeg licence`
 
 Look after the register of licensed premises.

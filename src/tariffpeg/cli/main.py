@@ -13,6 +13,7 @@ from tariffpeg.cli.config import config_group
 from tariffpeg.cli.context import Context, settings_from
 from tariffpeg.cli.db import db_group
 from tariffpeg.cli.harvest import harvest_group
+from tariffpeg.cli.letter import letter_group
 from tariffpeg.cli.licence import licence_group
 from tariffpeg.cli.listing import listing_group
 from tariffpeg.cli.operator import operator_group
@@ -62,6 +63,7 @@ main.add_command(channel_group)
 main.add_command(config_group)
 main.add_command(db_group)
 main.add_command(harvest_group)
+main.add_command(letter_group)
 main.add_command(licence_group)
 main.add_command(listing_group)
 main.add_command(operator_group)
