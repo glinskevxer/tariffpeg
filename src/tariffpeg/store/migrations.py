@@ -210,6 +210,27 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX operator_name ON operator(name)",
         ),
     ),
+    Migration(
+        7,
+        "correspondence",
+        (
+            """
+            CREATE TABLE letter (
+                reference      TEXT PRIMARY KEY,
+                operator_ref   TEXT NOT NULL REFERENCES operator(ref),
+                licence_serial INTEGER NOT NULL REFERENCES licence(serial) ON DELETE CASCADE,
+                kind           TEXT NOT NULL,
+                sent_on        TEXT NOT NULL,
+                subject        TEXT NOT NULL,
+                body_digest    TEXT NOT NULL,
+                replied_on     TEXT NOT NULL DEFAULT ''
+            )
+            """,
+            "CREATE INDEX letter_operator ON letter(operator_ref, sent_on)",
+            "CREATE INDEX letter_licence ON letter(licence_serial, sent_on)",
+            "CREATE INDEX letter_unanswered ON letter(replied_on)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 

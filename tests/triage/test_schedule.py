@@ -15,10 +15,9 @@ from tariffpeg.triage.schedule import (
     Diary,
     Refusal,
     Scheduler,
-    add_working_days,
     diaries_by_name,
-    is_working_day,
 )
+from tariffpeg.workdays import add_working_days
 
 DECIDED = dt.date(2025, 6, 2)
 
@@ -34,28 +33,6 @@ def licence(closed: frozenset[int] = frozenset()) -> Licence:
         particulars={"grading_band": 3, "let_rooms": 9, "bed_spaces": 18},
         closed_months=closed,
     )
-
-
-def test_a_weekend_is_not_a_working_day() -> None:
-    assert is_working_day(dt.date(2025, 6, 2))
-    assert not is_working_day(dt.date(2025, 6, 7))
-    assert not is_working_day(dt.date(2025, 6, 8))
-
-
-def test_a_holiday_is_not_a_working_day() -> None:
-    holidays = frozenset({dt.date(2025, 6, 2)})
-    assert not is_working_day(dt.date(2025, 6, 2), holidays)
-
-
-def test_working_days_are_counted_over_the_weekend() -> None:
-    assert add_working_days(dt.date(2025, 6, 5), 1) == dt.date(2025, 6, 6)
-    assert add_working_days(dt.date(2025, 6, 5), 2) == dt.date(2025, 6, 9)
-    assert add_working_days(dt.date(2025, 6, 5), 0) == dt.date(2025, 6, 5)
-
-
-def test_counting_working_days_backwards_is_refused() -> None:
-    with pytest.raises(Invalid, match="counted forwards"):
-        add_working_days(DECIDED, -1)
 
 
 def test_a_visit_lands_after_the_notice_period() -> None:

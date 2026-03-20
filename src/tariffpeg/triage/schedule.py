@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from tariffpeg.errors import Invalid
 from tariffpeg.model.licence import Licence
 from tariffpeg.triage.disposition import Disposition
+from tariffpeg.workdays import add_working_days, is_working_day
 
 NOTICE_DAYS = 2
 """Working days between a decision and the earliest visit it can produce."""
@@ -28,26 +29,6 @@ TARGET_DAYS = {Disposition.URGENT: 10, Disposition.REINSPECTION: 40}
 
 SEARCH_DAYS = 400
 """How far ahead the search will look before giving up."""
-
-
-def is_working_day(day: dt.date, holidays: frozenset[dt.date] = frozenset()) -> bool:
-    """Return whether the unit works on a day."""
-    return day.weekday() < 5 and day not in holidays
-
-
-def add_working_days(
-    start: dt.date, count: int, holidays: frozenset[dt.date] = frozenset()
-) -> dt.date:
-    """Return the day a number of working days after another."""
-    if count < 0:
-        raise Invalid("count", count, "working days are counted forwards")
-    day = start
-    left = count
-    while left:
-        day += dt.timedelta(days=1)
-        if is_working_day(day, holidays):
-            left -= 1
-    return day
 
 
 @dataclass(frozen=True, slots=True)

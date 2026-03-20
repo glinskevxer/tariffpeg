@@ -192,3 +192,28 @@ Digest `269776a0e609a8bc`.
 | --- | --- | --- | --- |
 | `licence_operator` | `licence` | operator_ref | no |
 | `operator_name` | `operator` | name | no |
+
+## 007 correspondence
+
+Digest `d7da0fb00f9ae235`.
+
+### `letter`
+
+| column | type | and |
+| --- | --- | --- |
+| `reference` | TEXT | PRIMARY KEY |
+| `operator_ref` | TEXT | NOT NULL REFERENCES operator(ref) |
+| `licence_serial` | INTEGER | NOT NULL REFERENCES licence(serial) ON DELETE CASCADE |
+| `kind` | TEXT | NOT NULL |
+| `sent_on` | TEXT | NOT NULL |
+| `subject` | TEXT | NOT NULL |
+| `body_digest` | TEXT | NOT NULL |
+| `replied_on` | TEXT | NOT NULL DEFAULT '' |
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `letter_operator` | `letter` | operator_ref, sent_on | no |
+| `letter_licence` | `letter` | licence_serial, sent_on | no |
+| `letter_unanswered` | `letter` | replied_on | no |
