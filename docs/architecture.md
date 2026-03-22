@@ -122,6 +122,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 - `tariffpeg.report.casefile`
 - `tariffpeg.report.rows`
+- `tariffpeg.report.summary`
 
 ### cli
 

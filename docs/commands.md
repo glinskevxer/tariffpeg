@@ -510,6 +510,14 @@ List what the unit would do about every active licence.
 | `--at` |  | The month to decide at. |
 | `--needing-a-visit` |  | Only the ones that send somebody out. |
 
+### `tariffpeg triage return`
+
+Print the return the unit files for a month.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to file the return for. |
+
 ### `tariffpeg triage schedule`
 
 Book a visit for everything that needs one.

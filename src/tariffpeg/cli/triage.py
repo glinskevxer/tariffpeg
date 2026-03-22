@@ -10,6 +10,7 @@ from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
 from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.report.rows import Column
+from tariffpeg.report.summary import COLUMNS as RETURN_COLUMNS
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.triage.disposition import Disposition
 from tariffpeg.triage.schedule import Booking, Diary, Scheduler
@@ -146,3 +147,15 @@ def schedule_command(ctx: Context, at: str, on: dt.datetime | None) -> None:
         ctx.emit(rows, VISIT_COLUMNS)
     if refused:
         ctx.say("", *refused)
+
+
+@triage_group.command(name="return")
+@click.option("--at", "at", default="", help="The month to file the return for.")
+@click.pass_obj
+def return_command(ctx: Context, at: str) -> None:
+    """Print the return the unit files for a month."""
+    with refusals():
+        month = month_or_now(at, ctx)
+        filed = service.monthly_return(ctx.store(), month)
+    ctx.say(f"Return for {filed.month}", "")
+    ctx.emit(filed.rows(), RETURN_COLUMNS)

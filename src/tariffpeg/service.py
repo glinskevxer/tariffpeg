@@ -26,6 +26,7 @@ from tariffpeg.model.listing import Listing
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
+from tariffpeg.report.summary import Return, compile_return
 from tariffpeg.sample.coverage import Coverage, measure
 from tariffpeg.sample.regime import PUBLISHED, Regime
 from tariffpeg.store.captures import CaptureStore
@@ -173,3 +174,19 @@ def bundle_for(db: Database, serial: int, directory: Path) -> tuple[Path, int]:
     index = directory / INDEX
     index.write_text(NEWLINE.join(entries).rstrip() + NEWLINE, encoding="utf-8", newline=NEWLINE)
     return index, written
+
+
+def monthly_return(
+    db: Database,
+    at: StayMonth,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Return:
+    """Return the figures the unit files for a month."""
+    return compile_return(
+        at,
+        LicenceStore(db).all(),
+        coverages(db, at, regime, rules),
+        decisions(db, at, pack, regime, rules),
+    )

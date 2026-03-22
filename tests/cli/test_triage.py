@@ -68,3 +68,27 @@ def test_a_month_the_reader_does_not_know_is_refused(run: Run, tmp_path: Path) -
     result = run("triage", "list", "--at", "last summer")
     assert result.exit_code == 2
     assert "not a shape this reader knows" in result.output
+
+
+def test_the_monthly_return_prints_the_figures(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "return", "--at", "2025-09")
+    assert result.exit_code == 0
+    assert "Return for 2025-09" in result.output
+    assert "licences on the register" in result.output
+    assert "held back by a short sample" in result.output
+
+
+def test_the_monthly_return_counts_the_licence_that_is_there(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    lines = run("triage", "return", "--at", "2025-09").output.splitlines()
+    listed = [line for line in lines if "licences on the register" in line]
+    assert listed[0].rstrip().endswith("1")
+
+
+def test_the_monthly_return_can_be_asked_for_as_comma_separated_text(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "return", "--at", "2025-09", extra=["--csv"])
+    assert "figure,count" in result.output
