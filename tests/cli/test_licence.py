@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from tariffpeg.ids import format_licence_ref
 from tests.cli.conftest import Run
 
@@ -180,3 +182,68 @@ def test_a_particular_pair_is_read_into_a_value() -> None:
     )
     assert as_row(licence)["ref"] == licence.ref
     assert as_row(licence)["band"] == 3
+
+
+EXTRACT = (
+    "serial,trading_name,operator_name,locality,period_start,period_end,"
+    "grading_band,let_rooms,bed_spaces\n"
+    "4021,The Anchor Rooms,Pellow and Daughter,Porthgwarra,2025-04-01,2026-03-31,3,9,18\n"
+    "5000,Quay Cottage,Trewin Lets,Sennen,2025-04-01,2026-03-31,2,4,8\n"
+)
+
+
+def test_an_extract_is_read_onto_the_register(migrated: Run, tmp_path: Path) -> None:
+    target = tmp_path / "register.csv"
+    target.write_text(EXTRACT, encoding="utf-8")
+    result = migrated("licence", "import", str(target))
+    assert result.exit_code == 0
+    assert "2 rows read, 0 refused" in result.output
+    assert "2 added" in result.output
+    assert "Quay Cottage" in migrated("licence", "list").output
+
+
+def test_a_dry_run_writes_nothing(migrated: Run, tmp_path: Path) -> None:
+    target = tmp_path / "register.csv"
+    target.write_text(EXTRACT, encoding="utf-8")
+    result = migrated("licence", "import", str(target), "--dry-run")
+    assert "nothing was written" in result.output
+    assert "Quay Cottage" not in migrated("licence", "list").output
+
+
+def test_a_licence_already_on_the_register_is_left_alone(migrated: Run, tmp_path: Path) -> None:
+    target = tmp_path / "register.csv"
+    target.write_text(EXTRACT, encoding="utf-8")
+    migrated("licence", "import", str(target))
+    again = migrated("licence", "import", str(target))
+    assert "0 added, 0 written over, 2 left alone" in again.output
+
+
+def test_a_licence_already_on_the_register_is_written_over_when_asked(
+    migrated: Run, tmp_path: Path
+) -> None:
+    target = tmp_path / "register.csv"
+    target.write_text(EXTRACT, encoding="utf-8")
+    migrated("licence", "import", str(target))
+    target.write_text(EXTRACT.replace("The Anchor Rooms", "The Anchor Hotel"), encoding="utf-8")
+    again = migrated("licence", "import", str(target), "--replace")
+    assert "2 written over" in again.output
+    assert "The Anchor Hotel" in migrated("licence", "list").output
+
+
+def test_a_row_that_will_not_read_is_named_and_the_rest_go_on(
+    migrated: Run, tmp_path: Path
+) -> None:
+    target = tmp_path / "register.csv"
+    target.write_text(
+        EXTRACT.replace("2025-04-01,2026-03-31,3", "nonsense,2026-03-31,3"), encoding="utf-8"
+    )
+    result = migrated("licence", "import", str(target))
+    assert "1 rows read, 1 refused" in result.output
+    assert "row 2:" in result.output
+    assert "1 added" in result.output
+
+
+def test_an_extract_that_is_not_there_is_refused(migrated: Run, tmp_path: Path) -> None:
+    result = migrated("licence", "import", str(tmp_path / "nothing.csv"))
+    assert result.exit_code == 2
+    assert "no extract here" in result.output

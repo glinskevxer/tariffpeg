@@ -233,6 +233,16 @@ Put a licence on the register.
 | `--closed` |  | Months the premises shuts, as 1,2,3. |
 | `--particular` |  | A particular, as key=value. |
 
+### `tariffpeg licence import`
+
+Read a register extract and put what reads on the register.
+
+| what | and | why |
+| --- | --- | --- |
+| `path` | argument |  |
+| `--dry-run` |  | Read the extract and write nothing. |
+| `--replace` |  | Write over licences already on the register. |
+
 ### `tariffpeg licence list`
 
 List what is on the register.

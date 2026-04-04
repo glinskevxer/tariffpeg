@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import click
 
@@ -10,6 +11,7 @@ from tariffpeg.cli.context import Context, refusals
 from tariffpeg.errors import Invalid
 from tariffpeg.model.licence import Licence, LicenceStatus
 from tariffpeg.model.particulars import SPECS, parse_value
+from tariffpeg.normalise.register import read_text
 from tariffpeg.report.rows import Column
 from tariffpeg.store.licences import LicenceStore
 
@@ -202,3 +204,37 @@ def remove_command(ctx: Context, ref: str) -> None:
         licence = store.by_ref(ref)
         store.remove(licence.serial)
     ctx.say(f"{licence.ref} removed")
+
+
+@licence_group.command(name="import")
+@click.argument("path", type=click.Path(path_type=Path))
+@click.option("--dry-run", is_flag=True, help="Read the extract and write nothing.")
+@click.option("--replace", is_flag=True, help="Write over licences already on the register.")
+@click.pass_obj
+def import_command(ctx: Context, path: Path, dry_run: bool, replace: bool) -> None:
+    """Read a register extract and put what reads on the register."""
+    with refusals():
+        if not path.exists():
+            raise Invalid("extract", str(path), "there is no extract here")
+        reading = read_text(path.read_text(encoding="utf-8"))
+    ctx.say(reading.summary())
+    for problem in reading.problems:
+        ctx.say(f"  {problem}")
+    if dry_run:
+        ctx.say("nothing was written")
+        return
+    store = LicenceStore(ctx.store())
+    added = 0
+    written = 0
+    skipped = 0
+    with refusals():
+        for licence in reading.licences:
+            if not store.exists(licence.serial):
+                store.add(licence)
+                added += 1
+            elif replace:
+                store.replace(licence)
+                written += 1
+            else:
+                skipped += 1
+    ctx.say(f"{added} added, {written} written over, {skipped} left alone")

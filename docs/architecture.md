@@ -72,6 +72,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 ### normalise
 
+- `tariffpeg.normalise.register`
 - `tariffpeg.normalise.review`
 
 ### dedupe
