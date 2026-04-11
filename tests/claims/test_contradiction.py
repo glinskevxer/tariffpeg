@@ -199,3 +199,21 @@ def test_every_contradiction_names_the_review_the_licence_and_the_rule() -> None
     assert found[0].licence_serial == 4021
     assert found[0].rule_id == "lift-absent"
     assert "no lift" in found[0].quote
+
+
+def test_a_contradiction_carries_the_language_it_was_translated_from() -> None:
+    from dataclasses import replace
+
+    body = "There is no lift and our room was on the third floor here."
+    translated = replace(review(body), translated_from="fr")
+    found = read_review(translated, licence(), PACK)
+    assert found[0].translated
+    assert found[0].translated_from == "fr"
+    assert "through a translation from fr" in found[0].line()
+
+
+def test_a_contradiction_from_words_the_guest_wrote_says_nothing_about_translation() -> None:
+    body = "There is no lift and our room was on the third floor here."
+    found = read_review(review(body), licence(), PACK)
+    assert not found[0].translated
+    assert "translation" not in found[0].line()

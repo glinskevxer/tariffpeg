@@ -52,7 +52,11 @@ def parse_submitted(text: str) -> dt.date | None:
 
 
 def normalise_language(text: str, fallback: str = "en") -> str:
-    """Return the language tag reduced to its first subtag."""
+    """Return the language tag reduced to its first subtag.
+
+    A blank tag falls back, which is how a channel that says nothing about the
+    language of a review ends up marked with the language the channel serves.
+    """
     match = _TAG.match(text.strip().lower())
     return match.group(0) if match else fallback
 
@@ -110,6 +114,7 @@ def normalise(
             language=normalise_language(raw.get("language"), channel.locale),
             submitted=parse_submitted(raw.get("submitted")),
             operator_response=redact(raw.get("response")).text,
+            translated_from=normalise_language(raw.get("translated_from"), ""),
         )
     except Invalid as err:
         return Normalised(problems=(*problems, f"{where}: {err.reason}"))

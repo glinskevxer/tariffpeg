@@ -41,6 +41,7 @@ class Review:
     language: str = "en"
     submitted: dt.date | None = None
     operator_response: str = ""
+    translated_from: str = ""
 
     def __post_init__(self) -> None:
         if not is_slug(self.channel):
@@ -84,6 +85,22 @@ class Review:
     def age_in_months(self, at: StayMonth) -> int:
         """Return how many months old the stay is at a given month."""
         return at.months_since(self.stay)
+
+    @property
+    def is_translated(self) -> bool:
+        """Return whether the channel served a translation rather than the words written.
+
+        A translation still counts towards the sample. It carries less weight as
+        evidence, and a case file that quotes one says so, because the words in
+        the quotation are the words a machine chose.
+        """
+        return bool(self.translated_from.strip())
+
+    def attribution(self) -> str:
+        """Return the line a case file prints under a quotation."""
+        if not self.is_translated:
+            return f"written on {self.channel}"
+        return f"translated by {self.channel} from {self.translated_from}"
 
     def has_response(self) -> bool:
         """Return whether the operator replied on the channel."""

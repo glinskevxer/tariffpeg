@@ -25,6 +25,11 @@ HALF_LIFE_MONTHS = {Persistence.STRUCTURAL: 24, Persistence.TRANSIENT: 6}
 FLOOR = 0.15
 """What a contradiction is still worth however old it gets."""
 
+TRANSLATED_SHARE = 0.7
+"""What a contradiction read out of a translation is worth. The finding may be
+right and the words are not the ones the guest chose, so it is worth having and
+worth less than a guest saying it in their own language."""
+
 PLACES = 4
 """Weights are rounded here so that two runs of the same evidence produce the
 same number, whatever order the additions happened in."""
@@ -85,7 +90,8 @@ def weigh(contradiction: Contradiction, at: StayMonth) -> Weighed:
     """Return what a contradiction is worth at a given month."""
     months = at.months_since(contradiction.stay)
     kept = decay(months, contradiction.persistence)
-    return Weighed(contradiction, months, round(contradiction.strength * kept, PLACES))
+    through = TRANSLATED_SHARE if contradiction.translated else 1.0
+    return Weighed(contradiction, months, round(contradiction.strength * kept * through, PLACES))
 
 
 def weigh_all(found: tuple[Contradiction, ...], at: StayMonth) -> tuple[Weighed, ...]:

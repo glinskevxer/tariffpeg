@@ -45,13 +45,15 @@ class Quotation:
     capture_digest: str
     fetched_at: dt.datetime | None
     weight: float
+    attribution: str = ""
 
     def line(self) -> str:
         """Return the quotation as the file prints it."""
         served = self.fetched_at.date().isoformat() if self.fetched_at else "not on file"
+        through = f" {self.attribution}." if self.attribution else ""
         return (
             f"  {self.stay} on {self.channel} ({self.weight:.2f}): {self.quote}"
-            f" [{self.capture_digest[:19]}, served {served}]"
+            f"{through} [{self.capture_digest[:19]}, served {served}]"
         )
 
 
@@ -204,6 +206,7 @@ def _quotations(
                     capture_digest=review.capture_digest,
                     fetched_at=capture.fetched_at if capture else None,
                     weight=item.weight,
+                    attribution=review.attribution(),
                 )
             )
     return tuple(out)

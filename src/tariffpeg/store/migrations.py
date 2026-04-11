@@ -231,6 +231,14 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX letter_unanswered ON letter(replied_on)",
         ),
     ),
+    Migration(
+        8,
+        "translation",
+        (
+            "ALTER TABLE review ADD COLUMN translated_from TEXT NOT NULL DEFAULT ''",
+            "CREATE INDEX review_translated ON review(translated_from)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 

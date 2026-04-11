@@ -128,3 +128,23 @@ def test_the_same_evidence_weighs_the_same_however_it_is_ordered() -> None:
     forwards = sum(item.weight for item in weigh_all(items, at))
     backwards = sum(item.weight for item in weigh_all(tuple(reversed(items)), at))
     assert forwards == backwards
+
+
+def test_a_contradiction_read_out_of_a_translation_weighs_less() -> None:
+    from dataclasses import replace
+
+    from tariffpeg.triage.weight import TRANSLATED_SHARE
+
+    plain = contradiction()
+    through = replace(plain, translated_from="fr")
+    assert through.translated
+    assert not plain.translated
+    assert weigh(through, STAY).weight == pytest.approx(
+        weigh(plain, STAY).weight * TRANSLATED_SHARE
+    )
+
+
+def test_a_translation_is_worth_having_and_worth_less() -> None:
+    from tariffpeg.triage.weight import TRANSLATED_SHARE
+
+    assert 0 < TRANSLATED_SHARE < 1

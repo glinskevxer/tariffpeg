@@ -137,3 +137,20 @@ def test_the_optional_fields_default_to_nothing() -> None:
 
 def test_the_submitted_date_is_kept_when_the_channel_gives_one() -> None:
     assert make(submitted=dt.date(2025, 8, 3)).submitted == dt.date(2025, 8, 3)
+
+
+def test_a_review_the_channel_translated_says_so() -> None:
+    assert not make().is_translated
+    assert make(translated_from="fr").is_translated
+    assert not make(translated_from="  ").is_translated
+
+
+def test_the_attribution_says_where_the_words_came_from() -> None:
+    assert make().attribution() == "written on seaboard"
+    assert make(translated_from="fr").attribution() == "translated by seaboard from fr"
+
+
+def test_a_translated_review_still_counts_as_a_review() -> None:
+    translated = make(translated_from="fr")
+    assert translated.is_substantial()
+    assert translated.words() == make().words()

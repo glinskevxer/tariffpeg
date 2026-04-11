@@ -37,6 +37,7 @@ COLUMNS = (
     "capture_digest",
     "profile_key",
     "first_seen",
+    "translated_from",
 )
 """The review columns, in the order the table declares them."""
 
@@ -66,6 +67,7 @@ def hydrate(row: sqlite3.Row) -> Review:
         language=str(row["language"]),
         submitted=dt.date.fromisoformat(submitted) if submitted else None,
         operator_response=str(row["operator_response"]),
+        translated_from=str(row["translated_from"]),
     )
 
 
@@ -90,6 +92,7 @@ def flatten(review: Review, first_seen: dt.datetime) -> tuple[object, ...]:
         review.capture_digest,
         review.profile_key,
         isoformat(first_seen),
+        review.translated_from,
     )
 
 

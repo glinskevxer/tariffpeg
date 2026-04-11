@@ -217,3 +217,13 @@ Digest `d7da0fb00f9ae235`.
 | `letter_operator` | `letter` | operator_ref, sent_on | no |
 | `letter_licence` | `letter` | licence_serial, sent_on | no |
 | `letter_unanswered` | `letter` | replied_on | no |
+
+## 008 translation
+
+Digest `947fd1bdacc7f101`.
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `review_translated` | `review` | translated_from | no |

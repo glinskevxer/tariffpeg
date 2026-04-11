@@ -37,6 +37,12 @@ class Contradiction:
     stay: StayMonth
     declared: str
     asserted: str
+    translated_from: str = ""
+
+    @property
+    def translated(self) -> bool:
+        """Return whether these were the words a machine chose."""
+        return bool(self.translated_from)
 
     @property
     def structural(self) -> bool:
@@ -46,9 +52,10 @@ class Contradiction:
     def line(self) -> str:
         """Return the one line a case file prints for this contradiction."""
         spec = spec_for(self.claim_key)
+        through = f", through a translation from {self.translated_from}" if self.translated else ""
         return (
             f"{self.claim_key}: the licence says {self.declared},"
-            f" a guest in {self.stay} said {self.asserted}"
+            f" a guest in {self.stay} said {self.asserted}{through}"
             f" ({spec.label})"
         )
 
@@ -111,6 +118,7 @@ def read_review(review: Review, licence: Licence, pack: RulePack) -> tuple[Contr
                 stay=review.stay,
                 declared=spec.render(licence.particular(assertion.claim_key)),
                 asserted=_asserted_text(assertion.claim_key, assertion),
+                translated_from=review.translated_from,
             )
         )
     return tuple(found)

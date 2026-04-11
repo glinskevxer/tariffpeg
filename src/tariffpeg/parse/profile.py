@@ -28,6 +28,7 @@ FIELD_NAMES = (
     "submitted",
     "response",
     "language",
+    "translated_from",
 )
 """Every field a profile is allowed to describe."""
 
