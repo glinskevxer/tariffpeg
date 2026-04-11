@@ -89,6 +89,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 ### sample
 
+- `tariffpeg.sample.calibration`
 - `tariffpeg.sample.coverage`
 - `tariffpeg.sample.regime`
 
