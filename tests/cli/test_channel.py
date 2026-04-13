@@ -250,3 +250,30 @@ def test_a_probe_with_no_transport_named_is_refused(migrated: Run) -> None:
 def test_a_probe_of_a_channel_nobody_registered_is_refused(migrated: Run, tmp_path: Path) -> None:
     bundle = probe_bundle(tmp_path, "User-agent: *\n")
     assert migrated("channel", "probe", "nowhere", "--bundle", str(bundle)).exit_code == 3
+
+
+def test_the_calibration_of_a_channel_with_nothing_held_reads_as_thin(
+    migrated: Run,
+) -> None:
+    migrated(*ADD_CHANNEL)
+    result = migrated("channel", "calibration", "--at", "2026-06")
+    assert result.exit_code == 0
+    assert "seaboard" in result.output
+    assert "too few reviews to say" in result.output
+
+
+def test_the_calibration_of_a_store_with_no_channels_says_so(migrated: Run) -> None:
+    assert "no channels are registered" in migrated("channel", "calibration").output
+
+
+def test_the_calibration_can_be_asked_for_as_comma_separated_text(migrated: Run) -> None:
+    migrated(*ADD_CHANNEL)
+    result = migrated("channel", "calibration", "--at", "2026-06", extra=["--csv"])
+    assert result.output.splitlines()[0].startswith("channel,earlier median,later median")
+
+
+def test_a_span_of_no_months_is_refused(migrated: Run) -> None:
+    migrated(*ADD_CHANNEL)
+    result = migrated("channel", "calibration", "--at", "2026-06", "--months", "0")
+    assert result.exit_code == 2
+    assert "a month or more" in result.output

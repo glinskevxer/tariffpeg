@@ -64,6 +64,15 @@ Register a channel and the terms agreed with it.
 | `--pages` |  | Pages per property in one run. |
 | `--locale` |  | The language the channel serves. |
 
+### `tariffpeg channel calibration`
+
+Set each channel recent scoring against the span before it.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to look back from. |
+| `--months` |  | How many months each span covers. |
+
 ### `tariffpeg channel list`
 
 List the registered channels.

@@ -181,3 +181,19 @@ def test_the_bundle_writer_writes_an_index_and_the_pages(wired: Database, tmp_pa
     assert index == out / INDEX
     assert written == 1
     assert load(out).known() == ("https://seaboard.example/p/1/reviews",)
+
+
+def test_the_calibration_covers_every_registered_channel(wired: Database) -> None:
+    found = service.calibration(wired, AT)
+    assert [drift.channel for drift in found] == ["quayside", "seaboard"]
+
+
+def test_a_channel_with_nothing_held_reads_as_thin(wired: Database) -> None:
+    from tariffpeg.sample.calibration import Calibration
+
+    found = service.calibration(wired, AT)
+    assert all(drift.verdict is Calibration.THIN for drift in found)
+
+
+def test_the_calibration_of_a_store_with_no_channels_is_empty(db: Database) -> None:
+    assert service.calibration(db, AT) == ()

@@ -6,8 +6,9 @@ from pathlib import Path
 
 import click
 
+from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
-from tariffpeg.cli.harvest import transport_for
+from tariffpeg.cli.harvest import month_or_now, transport_for
 from tariffpeg.errors import Invalid
 from tariffpeg.harvest.session import Session
 from tariffpeg.model.channel import ALWAYS, Channel, CourtesyWindow, FetchPolicy, SyndicationClass
@@ -217,3 +218,39 @@ def probe_command(ctx: Context, slug: str, bundle_path: Path | None, live: bool)
     for listing in listings:
         allowed = "allowed" if rules.allows(agent, listing.path) else "DISALLOWED"
         ctx.say(f"  {listing.licence_serial} {listing.path}: {allowed}")
+
+
+CALIBRATION_COLUMNS = (
+    Column("channel", "channel"),
+    Column("earlier", "earlier median", numeric=True),
+    Column("later", "later median", numeric=True),
+    Column("moved", "moved", numeric=True),
+    Column("verdict", "verdict"),
+)
+
+
+@channel_group.command(name="calibration")
+@click.option("--at", "at", default="", help="The month to look back from.")
+@click.option("--months", default=12, type=int, help="How many months each span covers.")
+@click.pass_obj
+def calibration_command(ctx: Context, at: str, months: int) -> None:
+    """Set each channel recent scoring against the span before it."""
+    with refusals():
+        found = service.calibration(ctx.store(), month_or_now(at, ctx), months)
+    if not found:
+        ctx.say("no channels are registered")
+        return
+    rows = [
+        {
+            "channel": drift.channel,
+            "earlier": drift.earlier.median_points,
+            "later": drift.later.median_points,
+            "moved": drift.shift,
+            "verdict": str(drift.verdict),
+        }
+        for drift in found
+    ]
+    ctx.emit(rows, CALIBRATION_COLUMNS)
+    ctx.say("")
+    for drift in found:
+        ctx.say(drift.line())

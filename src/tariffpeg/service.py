@@ -27,6 +27,7 @@ from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
 from tariffpeg.report.summary import Return, compile_return
+from tariffpeg.sample.calibration import TOLERANCE, Drift, look_back
 from tariffpeg.sample.coverage import Coverage, measure
 from tariffpeg.sample.regime import PUBLISHED, Regime
 from tariffpeg.store.captures import CaptureStore
@@ -190,3 +191,17 @@ def monthly_return(
         coverages(db, at, regime, rules),
         decisions(db, at, pack, regime, rules),
     )
+
+
+def calibration(
+    db: Database,
+    at: StayMonth,
+    months: int = 12,
+    tolerance: int = TOLERANCE,
+) -> tuple[Drift, ...]:
+    """Return what the last two spans say about each channel anchor table."""
+    reviews = ReviewStore(db)
+    found: list[Drift] = []
+    for slug in ChannelStore(db).slugs():
+        found.append(look_back(slug, reviews.for_channel(slug), at, months, tolerance))
+    return tuple(found)
