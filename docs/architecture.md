@@ -104,6 +104,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.store.migrations`
 - `tariffpeg.store.operators`
 - `tariffpeg.store.remediations`
+- `tariffpeg.store.retention`
 - `tariffpeg.store.reviews`
 
 ### harvest

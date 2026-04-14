@@ -197,3 +197,32 @@ def test_a_channel_with_nothing_held_reads_as_thin(wired: Database) -> None:
 
 def test_the_calibration_of_a_store_with_no_channels_is_empty(db: Database) -> None:
     assert service.calibration(db, AT) == ()
+
+
+def test_the_captures_behind_live_quotations_are_protected(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    held = service.quoted_digests(wired, AT)
+    assert DIGEST in held
+
+
+def test_a_licence_with_nothing_quoted_protects_nothing(wired: Database) -> None:
+    assert service.quoted_digests(wired, AT) == set()
+
+
+def test_a_retention_plan_protects_what_is_quoted(wired: Database) -> None:
+    import datetime as dt2
+
+    from tariffpeg.store.captures import CaptureStore
+
+    body = b"<html>a quoted page</html>"
+    CaptureStore(wired).db.conn.execute(
+        "UPDATE capture SET digest = digest WHERE digest = ?", (DIGEST,)
+    )
+    CaptureStore(wired).db.conn.execute(
+        "INSERT INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+        (DIGEST, body, "2025-07-04T22:15:00Z"),
+    )
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    plan = service.retention_plan(wired, dt2.date(2026, 1, 1), AT)
+    assert plan.dropping == ()
+    assert plan.kept_in_use == (DIGEST,)

@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import datetime as dt
+
 import click
 
+from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
+from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.report.rows import Column
 from tariffpeg.store.captures import CaptureStore
 from tariffpeg.store.channels import ChannelStore
 from tariffpeg.store.db import Database
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.migrations import MIGRATIONS, applied, current_version, drift, migrate
+from tariffpeg.store.retention import run as run_prune
 from tariffpeg.store.reviews import ReviewStore
 
 COUNTS = (Column("what", "what"), Column("held", "held", numeric=True))
@@ -100,3 +105,26 @@ def _counts(store: Database) -> list[dict[str, object]]:
 def _reviews(store: Database) -> int:
     reviews = ReviewStore(store)
     return sum(reviews.count_for(licence.serial) for licence in LicenceStore(store).all())
+
+
+@db_group.command(name="prune")
+@click.option(
+    "--before",
+    type=click.DateTime(["%Y-%m-%d"]),
+    required=True,
+    help="Drop page bodies fetched before this day.",
+)
+@click.option("--at", "at", default="", help="The month to reckon live case files at.")
+@click.option("--run", "go", is_flag=True, help="Actually drop them.")
+@click.pass_obj
+def prune_command(ctx: Context, before: dt.datetime, at: str, go: bool) -> None:
+    """Drop the page bodies nothing is relying on any more."""
+    with refusals():
+        plan = service.retention_plan(ctx.store(), before.date(), month_or_now(at, ctx))
+    ctx.say(*plan.lines())
+    if not go:
+        ctx.say("nothing was dropped, say --run to do it")
+        return
+    with refusals():
+        went = run_prune(ctx.store(), plan)
+    ctx.say(f"{went} page bodies dropped")

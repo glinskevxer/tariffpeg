@@ -36,6 +36,8 @@ from tariffpeg.store.db import Database
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.remediations import RemediationStore
+from tariffpeg.store.retention import Prune
+from tariffpeg.store.retention import plan as build_prune
 from tariffpeg.store.reviews import ReviewStore
 from tariffpeg.triage.disposition import Decision, Thresholds
 
@@ -205,3 +207,30 @@ def calibration(
     for slug in ChannelStore(db).slugs():
         found.append(look_back(slug, reviews.for_channel(slug), at, months, tolerance))
     return tuple(found)
+
+
+def quoted_digests(
+    db: Database,
+    at: StayMonth,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> set[str]:
+    """Return the captures behind every quotation in a live case file."""
+    held: set[str] = set()
+    for licence in LicenceStore(db).with_status(LicenceStatus.ACTIVE):
+        case = case_for(db, licence, at, pack, regime, rules)
+        held.update(item.capture_digest for item in case.quotations)
+    return held
+
+
+def retention_plan(
+    db: Database,
+    before: dt.date,
+    at: StayMonth,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Prune:
+    """Return what a retention run would drop, protecting what is quoted."""
+    return build_prune(db, before, quoted_digests(db, at, pack, regime, rules))

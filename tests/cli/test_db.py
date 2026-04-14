@@ -73,3 +73,22 @@ def test_a_store_built_somewhere_else_does_not_verify(migrated: Run, store_path:
     result = migrated("db", "verify")
     assert result.exit_code == 5
     assert "different statements" in result.output
+
+
+def test_a_prune_that_was_not_asked_to_run_drops_nothing(migrated: Run) -> None:
+    result = migrated("db", "prune", "--before", "2026-01-01")
+    assert result.exit_code == 0
+    assert "0 page bodies would go" in result.output
+    assert "say --run to do it" in result.output
+
+
+def test_a_prune_that_was_asked_to_run_says_how_many_went(migrated: Run) -> None:
+    result = migrated("db", "prune", "--before", "2026-01-01", "--run")
+    assert result.exit_code == 0
+    assert "0 page bodies dropped" in result.output
+
+
+def test_the_status_says_how_many_pages_and_bytes_are_kept(migrated: Run) -> None:
+    result = migrated("db", "status")
+    assert "pages kept" in result.output
+    assert "bytes kept" in result.output

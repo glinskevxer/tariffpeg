@@ -144,6 +144,16 @@ Bring the store up to the schema this version expects.
 
 List the migrations and whether they have run.
 
+### `tariffpeg db prune`
+
+Drop the page bodies nothing is relying on any more.
+
+| what | and | why |
+| --- | --- | --- |
+| `--before` | required | Drop page bodies fetched before this day. |
+| `--at` |  | The month to reckon live case files at. |
+| `--run` |  | Actually drop them. |
+
 ### `tariffpeg db status`
 
 Say what the store holds.
