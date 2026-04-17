@@ -92,3 +92,19 @@ def test_the_monthly_return_can_be_asked_for_as_comma_separated_text(
     harvested(run, tmp_path)
     result = run("triage", "return", "--at", "2025-09", extra=["--csv"])
     assert "figure,count" in result.output
+
+
+def test_the_explanation_shows_the_steps(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "explain", REF, "--at", "2025-09")
+    assert result.exit_code == 0
+    assert "WHAT WAS FOUND" in result.output
+    assert "HOW IT WAS ADDED UP" in result.output
+    assert "rule lift-absent" in result.output
+
+
+def test_the_explanation_of_a_licence_nobody_registered_is_refused(run: Run) -> None:
+    stock(run)
+    from tariffpeg.ids import format_licence_ref
+
+    assert run("triage", "explain", format_licence_ref(9999)).exit_code == 3

@@ -9,6 +9,7 @@ import click
 from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
 from tariffpeg.cli.harvest import month_or_now
+from tariffpeg.report.explanation import explain
 from tariffpeg.report.rows import Column
 from tariffpeg.report.summary import COLUMNS as RETURN_COLUMNS
 from tariffpeg.store.licences import LicenceStore
@@ -159,3 +160,15 @@ def return_command(ctx: Context, at: str) -> None:
         filed = service.monthly_return(ctx.store(), month)
     ctx.say(f"Return for {filed.month}", "")
     ctx.emit(filed.rows(), RETURN_COLUMNS)
+
+
+@triage_group.command(name="explain")
+@click.argument("ref")
+@click.option("--at", "at", default="", help="The month to decide at.")
+@click.pass_obj
+def explain_command(ctx: Context, ref: str, at: str) -> None:
+    """Print the arithmetic behind one decision, step by step."""
+    with refusals():
+        licence = LicenceStore(ctx.store()).by_ref(ref)
+        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
+    ctx.say(*explain(file).lines())

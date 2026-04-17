@@ -530,6 +530,15 @@ List the licences that are short, worst first.
 
 Decide what happens to the licences.
 
+### `tariffpeg triage explain`
+
+Print the arithmetic behind one decision, step by step.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+| `--at` |  | The month to decide at. |
+
 ### `tariffpeg triage list`
 
 List what the unit would do about every active licence.
