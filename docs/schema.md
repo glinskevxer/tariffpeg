@@ -227,3 +227,41 @@ Digest `947fd1bdacc7f101`.
 | index | on | columns | unique |
 | --- | --- | --- | --- |
 | `review_translated` | `review` | translated_from | no |
+
+## 009 profiles
+
+Digest `7d9151922821c515`.
+
+### `profile`
+
+| column | type | and |
+| --- | --- | --- |
+| `channel` | TEXT | NOT NULL REFERENCES channel(slug) |
+| `version` | INTEGER | NOT NULL |
+| `container` | TEXT | NOT NULL |
+| `next_page` | TEXT | NOT NULL DEFAULT '' |
+| `prefer_structured` | INTEGER | NOT NULL DEFAULT 0 |
+| `registered_on` | TEXT | NOT NULL |
+| `retired_on` | TEXT | NOT NULL DEFAULT '' |
+
+### `profile_field`
+
+| column | type | and |
+| --- | --- | --- |
+| `channel` | TEXT | NOT NULL |
+| `version` | INTEGER | NOT NULL |
+| `name` | TEXT | NOT NULL |
+| `source` | TEXT | NOT NULL |
+| `selector` | TEXT | NOT NULL DEFAULT '' |
+| `attribute` | TEXT | NOT NULL DEFAULT '' |
+| `key` | TEXT | NOT NULL DEFAULT '' |
+| `required` | INTEGER | NOT NULL DEFAULT 0 |
+| `position` | INTEGER | NOT NULL |
+| `FOREIGN` | KEY | (channel, version) REFERENCES profile(channel, version) |
+| `ON` | DELETE | CASCADE |
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `profile_live` | `profile` | channel, retired_on | no |

@@ -239,6 +239,41 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX review_translated ON review(translated_from)",
         ),
     ),
+    Migration(
+        9,
+        "profiles",
+        (
+            """
+            CREATE TABLE profile (
+                channel           TEXT NOT NULL REFERENCES channel(slug),
+                version           INTEGER NOT NULL,
+                container         TEXT NOT NULL,
+                next_page         TEXT NOT NULL DEFAULT '',
+                prefer_structured INTEGER NOT NULL DEFAULT 0,
+                registered_on     TEXT NOT NULL,
+                retired_on        TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (channel, version)
+            )
+            """,
+            """
+            CREATE TABLE profile_field (
+                channel   TEXT NOT NULL,
+                version   INTEGER NOT NULL,
+                name      TEXT NOT NULL,
+                source    TEXT NOT NULL,
+                selector  TEXT NOT NULL DEFAULT '',
+                attribute TEXT NOT NULL DEFAULT '',
+                key       TEXT NOT NULL DEFAULT '',
+                required  INTEGER NOT NULL DEFAULT 0,
+                position  INTEGER NOT NULL,
+                PRIMARY KEY (channel, version, name),
+                FOREIGN KEY (channel, version) REFERENCES profile(channel, version)
+                    ON DELETE CASCADE
+            )
+            """,
+            "CREATE INDEX profile_live ON profile(channel, retired_on)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 

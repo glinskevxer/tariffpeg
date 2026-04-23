@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from tariffpeg.errors import Invalid
-from tariffpeg.parse.profile import FieldRule, Profile
+from tariffpeg.model.profile import FieldRule, Profile
+from tariffpeg.parse.profile import check
 
 PROFILE_KEYS = frozenset(
     {"channel", "version", "container", "next_page", "prefer_structured", "field"}
@@ -50,13 +51,15 @@ def _profile(raw: Mapping[str, Any]) -> Profile:
     fields = raw.get("field", [])
     if not isinstance(fields, list):
         raise Invalid("field", type(fields).__name__, "the fields are written as a list of tables")
-    return Profile(
-        channel=str(raw["channel"]),
-        version=int(raw["version"]),
-        container=str(raw["container"]),
-        fields=tuple(_field(entry) for entry in fields),
-        next_page=str(raw.get("next_page", "")),
-        prefer_structured=bool(raw.get("prefer_structured", False)),
+    return check(
+        Profile(
+            channel=str(raw["channel"]),
+            version=int(raw["version"]),
+            container=str(raw["container"]),
+            fields=tuple(_field(entry) for entry in fields),
+            next_page=str(raw.get("next_page", "")),
+            prefer_structured=bool(raw.get("prefer_structured", False)),
+        )
     )
 
 

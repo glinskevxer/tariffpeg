@@ -23,6 +23,7 @@ NAME = "check_indexes"
 TABLE = re.compile(r"CREATE TABLE (\w+)\s*\((.*)\)\s*$", re.S | re.I)
 INDEX = re.compile(r"CREATE (?:UNIQUE )?INDEX (\w+) ON (\w+)\s*\(([^)]*)\)", re.I)
 REFERENCES = re.compile(r"^\s*(\w+)\s+\w+.*REFERENCES\s+(\w+)", re.I)
+TABLE_FOREIGN_KEY = re.compile(r"^\s*FOREIGN KEY\s*\(([^)]*)\)", re.I)
 PRIMARY_KEY = re.compile(r"PRIMARY KEY\s*\(([^)]*)\)", re.I)
 
 
@@ -41,6 +42,13 @@ def read_schema() -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str,
             if table:
                 name, body = table.group(1), table.group(2)
                 for line in body.splitlines():
+                    table_level = TABLE_FOREIGN_KEY.match(line)
+                    if table_level:
+                        # A key written at the table rather than beside a column
+                        # points from its first column, and that is the one a
+                        # cascading delete looks the row up by.
+                        pointing.setdefault(name, []).append(_first_column(table_level.group(1)))
+                        continue
                     pointer = REFERENCES.match(line)
                     if pointer:
                         pointing.setdefault(name, []).append(pointer.group(1))

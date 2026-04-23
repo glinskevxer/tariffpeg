@@ -15,9 +15,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
+from tariffpeg.model.profile import REQUIRED_FIELDS, FieldRule, Profile
 from tariffpeg.parse.dom import Element
 from tariffpeg.parse.jsonld import Structured, read, text_of
-from tariffpeg.parse.profile import REQUIRED_FIELDS, FieldRule, Profile
+from tariffpeg.parse.profile import compiled, container_selector, next_page_selector
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +70,7 @@ def _read_markup(rule: FieldRule, block: Element) -> str:
     same element that wraps the review, and a reader that only looks at the
     descendants of that element never finds it.
     """
-    selector = rule.compiled()
+    selector = compiled(rule)
     found = block if selector.matches(block) else selector.first(block)
     if found is None:
         return ""
@@ -157,7 +158,7 @@ def _pair_up(
 
 def extract(profile: Profile, root: Element, page_url: str = "") -> Extraction:
     """Apply a profile to a parsed page and return what it gave up."""
-    containers = profile.container_selector().select(root)
+    containers = container_selector(profile).select(root)
     structured = read(root)
     raw_blocks = [_block_fields(profile, block) for block in containers]
     folded, notes = _pair_up(profile, raw_blocks, structured)
@@ -170,7 +171,7 @@ def extract(profile: Profile, root: Element, page_url: str = "") -> Extraction:
             continue
         dropped.append(f"block {index} had no {' or '.join(candidate.missing())}")
     following = ""
-    selector = profile.next_page_selector()
+    selector = next_page_selector(profile)
     if selector is not None:
         link = selector.first(root)
         if link is not None and link.get("href"):
