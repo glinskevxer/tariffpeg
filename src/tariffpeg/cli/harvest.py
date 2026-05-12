@@ -16,10 +16,12 @@ from tariffpeg.fetch.transport import Transport
 from tariffpeg.harvest.runner import Runner
 from tariffpeg.harvest.session import Session
 from tariffpeg.model.period import StayMonth, parse_stay_month
+from tariffpeg.model.profile import Profile
 from tariffpeg.parse.drift import DriftWatch
 from tariffpeg.parse.loader import by_channel
 from tariffpeg.parse.loader import load as load_profiles
 from tariffpeg.report.rows import Column
+from tariffpeg.store.profiles import ProfileStore
 
 PLAN_COLUMNS = (
     Column("licence", "licence", numeric=True),
@@ -84,9 +86,9 @@ def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -
 @click.option(
     "--profiles",
     "profiles_path",
-    required=True,
     type=click.Path(path_type=Path),
-    help="The file saying how each channel is read.",
+    default=None,
+    help="A profile file to read, instead of the versions in the store.",
 )
 @click.option(
     "--bundle",
@@ -108,7 +110,7 @@ def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -
 @click.pass_obj
 def run_command(
     ctx: Context,
-    profiles_path: Path,
+    profiles_path: Path | None,
     bundle_path: Path | None,
     live: bool,
     at: str,
@@ -118,7 +120,7 @@ def run_command(
     """Read the channels and put what comes back into the store."""
     with refusals():
         transport = transport_for(bundle_path, live)
-        profiles = by_channel(load_profiles(profiles_path))
+        profiles = _profiles(ctx, profiles_path)
         month = month_or_now(at, ctx)
         day = on.date() if on else ctx.clock.now().date()
         store = ctx.store()
@@ -162,3 +164,14 @@ def transport_for(bundle_path: Path | None, live: bool) -> Transport:
     if live:
         return LiveTransport()
     raise Invalid("transport", "none", "say --bundle to replay or --live to reach the channels")
+
+
+def _profiles(ctx: Context, path: Path | None) -> dict[str, Profile]:
+    """Return the profiles a run reads with, from a file or from the store."""
+    if path is not None:
+        return by_channel(load_profiles(path))
+    store = ProfileStore(ctx.store())
+    found = store.live_by_channel(list(service.channels(ctx.store())))
+    if not found:
+        raise Invalid("profiles", "none", "no profile is registered, say --profiles to read a file")
+    return found

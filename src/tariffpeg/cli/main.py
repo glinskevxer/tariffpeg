@@ -17,6 +17,7 @@ from tariffpeg.cli.letter import letter_group
 from tariffpeg.cli.licence import licence_group
 from tariffpeg.cli.listing import listing_group
 from tariffpeg.cli.operator import operator_group
+from tariffpeg.cli.profile import profile_group
 from tariffpeg.cli.remediation import remediation_group
 from tariffpeg.cli.review import review_group
 from tariffpeg.cli.sample import sample_group
@@ -67,6 +68,7 @@ main.add_command(letter_group)
 main.add_command(licence_group)
 main.add_command(listing_group)
 main.add_command(operator_group)
+main.add_command(profile_group)
 main.add_command(remediation_group)
 main.add_command(review_group)
 main.add_command(sample_group)

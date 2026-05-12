@@ -182,7 +182,7 @@ Read the channels and put what comes back into the store.
 
 | what | and | why |
 | --- | --- | --- |
-| `--profiles` | required | The file saying how each channel is read. |
+| `--profiles` |  | A profile file to read, instead of the versions in the store. |
 | `--bundle` |  | Read from a recorded bundle instead of the network. |
 | `--live` |  | Actually reach the channels. |
 | `--at` |  | The month to measure the sample at. |
@@ -426,6 +426,38 @@ Print one operator and the licences they hold.
 | what | and | why |
 | --- | --- | --- |
 | `ref` | argument |  |
+
+## `tariffpeg profile`
+
+Look after how each channel is read.
+
+### `tariffpeg profile list`
+
+List the profile versions the store holds.
+
+| what | and | why |
+| --- | --- | --- |
+| `--channel` |  | Only this channel. |
+| `--all` |  | Include the versions that were retired. |
+
+### `tariffpeg profile register`
+
+Read a profile file and put the versions in it into the store.
+
+| what | and | why |
+| --- | --- | --- |
+| `path` | argument |  |
+| `--channel` |  | Only register the profile for this channel. |
+| `--on` |  | The day it starts being used, today if left out. |
+
+### `tariffpeg profile show`
+
+Print one profile version and every field it reads.
+
+| what | and | why |
+| --- | --- | --- |
+| `channel` | argument |  |
+| `--version` |  | A version other than the live one. |
 
 ## `tariffpeg remediation`
 
