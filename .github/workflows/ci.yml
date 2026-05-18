@@ -39,6 +39,7 @@ jobs:
       - run: python -m tariffpeg.tools.check_cli
       - run: python -m tariffpeg.tools.check_docstrings
       - run: python -m tariffpeg.tools.check_errors
+      - run: python -m tariffpeg.tools.check_flake
       - run: python -m tariffpeg.tools.check_gate
       - run: python -m tariffpeg.tools.check_indexes
       - run: python -m tariffpeg.tools.check_layers
