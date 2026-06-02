@@ -68,6 +68,7 @@ class CaseFile:
     applied: Applied
     quotations: tuple[Quotation, ...]
     notices: tuple[Remediation, ...]
+    reviews_by_key: Mapping[str, Review]
     visit: Booking | Refusal | None = None
 
     def quotations_for(self, claim_key: str) -> tuple[Quotation, ...]:
@@ -180,6 +181,7 @@ def build(
         applied=applied,
         quotations=_quotations(findings, by_key, captures or {}),
         notices=tuple(sorted(notices, key=lambda notice: (notice.claim_key, notice.reference))),
+        reviews_by_key=by_key,
         visit=visit,
     )
 

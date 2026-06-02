@@ -130,3 +130,16 @@ def test_an_explanation_is_the_shape_it_says_it_is(
     found = explain(file_for(anchor, channels))
     assert isinstance(found, Explanation)
     assert found.file.licence.serial == anchor.serial
+
+
+def test_the_explanation_says_how_a_finding_sits_across_the_rooms(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    found = explain(file_for(anchor, channels)).rooms()
+    assert any("no channel published a room class" in line for line in found)
+
+
+def test_the_rooms_block_has_a_heading_of_its_own(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    assert "HOW IT SITS ACROSS THE ROOMS" in explain(file_for(anchor, channels)).lines()

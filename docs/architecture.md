@@ -120,6 +120,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.triage.corroborate`
 - `tariffpeg.triage.disposition`
 - `tariffpeg.triage.remediation`
+- `tariffpeg.triage.rooms`
 - `tariffpeg.triage.schedule`
 - `tariffpeg.triage.weight`
 

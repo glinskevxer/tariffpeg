@@ -17,6 +17,7 @@ from tariffpeg.model.particulars import spec_for
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.triage.corroborate import Finding
 from tariffpeg.triage.disposition import ACCESS_CLAIMS, TAIL_SHARE, Disposition
+from tariffpeg.triage.rooms import spreads
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +78,11 @@ class Explanation:
             )
         return tuple(lines)
 
+    def rooms(self) -> tuple[str, ...]:
+        """Return how each finding sits across the room classes."""
+        found = spreads(self.file.decision.findings, self.file.reviews_by_key)
+        return tuple(item.line() for item in found)
+
     def outcome(self) -> tuple[str, ...]:
         """Return what the score came to and what held it back."""
         lines = list(self.file.decision.reasons)
@@ -93,6 +99,7 @@ class Explanation:
             ("what a notice discounted", self.discounts()),
             ("what the voices multiplied it by", self.corroboration()),
             ("how it was added up", self.arithmetic()),
+            ("how it sits across the rooms", self.rooms()),
             ("what came of it", self.outcome()),
         )
         out: list[str] = [
