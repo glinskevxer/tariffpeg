@@ -188,3 +188,46 @@ def test_an_empty_plan_explains_nothing_and_asks_for_nothing() -> None:
     assert plan.explain() == ()
     assert plan.total_pages == 0
     assert plan.channels() == ()
+
+
+def test_narrowing_to_one_licence_keeps_only_its_stops(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    listings = {4021: [listing(), listing(channel="quayside")]}
+    plan = build([anchor], listings, channels, {4021: coverage()}, ON)
+    narrowed = plan.narrowed(serial=4021)
+    assert len(narrowed.stops) == 2
+    assert narrowed.narrowed(serial=9999).stops == ()
+
+
+def test_narrowing_to_one_channel_keeps_only_that_channel(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    listings = {4021: [listing(), listing(channel="quayside")]}
+    plan = build([anchor], listings, channels, {4021: coverage()}, ON)
+    narrowed = plan.narrowed(channel="seaboard")
+    assert [stop.channel for stop in narrowed.stops] == ["seaboard"]
+
+
+def test_narrowing_says_what_it_left_out(anchor: Licence, channels: dict[str, Channel]) -> None:
+    listings = {4021: [listing(), listing(channel="quayside")]}
+    plan = build([anchor], listings, channels, {4021: coverage()}, ON)
+    narrowed = plan.narrowed(channel="seaboard")
+    assert any("left out of this run" in line for line in narrowed.skipped)
+
+
+def test_narrowing_keeps_the_lines_the_plan_already_had(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    lapsed = anchor.with_status(LicenceStatus.LAPSED)
+    plan = build([lapsed], {4021: [listing()]}, channels, {4021: coverage()}, ON)
+    narrowed = plan.narrowed(channel="seaboard")
+    assert "4021: the licence is lapsed" in narrowed.skipped
+
+
+def test_narrowing_by_nothing_keeps_everything(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    listings = {4021: [listing(), listing(channel="quayside")]}
+    plan = build([anchor], listings, channels, {4021: coverage()}, ON)
+    assert plan.narrowed().stops == plan.stops

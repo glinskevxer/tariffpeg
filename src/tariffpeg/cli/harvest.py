@@ -21,6 +21,7 @@ from tariffpeg.parse.drift import DriftWatch
 from tariffpeg.parse.loader import by_channel
 from tariffpeg.parse.loader import load as load_profiles
 from tariffpeg.report.rows import Column
+from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.profiles import ProfileStore
 
 PLAN_COLUMNS = (
@@ -60,14 +61,21 @@ def harvest_group() -> None:
     default=None,
     help="The day the harvest is being run on.",
 )
+@click.option("--licence", "ref", default="", help="Only this licence.")
+@click.option("--channel", default="", help="Only this channel.")
 @click.option("--skipped", is_flag=True, help="Also say what was left out and why.")
 @click.pass_obj
-def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -> None:
+def plan_command(
+    ctx: Context, at: str, on: dt.datetime | None, ref: str, channel: str, skipped: bool
+) -> None:
     """Say where the next harvest would go."""
     with refusals():
         month = month_or_now(at, ctx)
         day = on.date() if on else ctx.clock.now().date()
         plan = service.plan(ctx.store(), month, day)
+        serial = LicenceStore(ctx.store()).by_ref(ref).serial if ref else 0
+        if serial or channel:
+            plan = plan.narrowed(serial, channel)
     rows = [
         {
             "licence": stop.licence_serial,
@@ -106,6 +114,8 @@ def plan_command(ctx: Context, at: str, on: dt.datetime | None, skipped: bool) -
     default=None,
     help="The day the harvest is being run on.",
 )
+@click.option("--licence", "ref", default="", help="Only this licence.")
+@click.option("--channel", default="", help="Only this channel.")
 @click.option("--problems", is_flag=True, help="Also print what each page could not read.")
 @click.pass_obj
 def run_command(
@@ -115,6 +125,8 @@ def run_command(
     live: bool,
     at: str,
     on: dt.datetime | None,
+    ref: str,
+    channel: str,
     problems: bool,
 ) -> None:
     """Read the channels and put what comes back into the store."""
@@ -125,6 +137,9 @@ def run_command(
         day = on.date() if on else ctx.clock.now().date()
         store = ctx.store()
         plan = service.plan(store, month, day)
+        serial = LicenceStore(store).by_ref(ref).serial if ref else 0
+        if serial or channel:
+            plan = plan.narrowed(serial, channel)
         runner = Runner(
             store,
             Session(transport),

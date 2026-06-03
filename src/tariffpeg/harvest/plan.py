@@ -62,6 +62,26 @@ class Plan:
         """Return the stops for one licence, in plan order."""
         return tuple(stop for stop in self.stops if stop.licence_serial == serial)
 
+    def narrowed(self, serial: int = 0, channel: str = "") -> Plan:
+        """Return the plan with only the stops a caller asked for.
+
+        Narrowing is done on the built plan rather than before it, so the lines
+        saying what was left out are the same lines whether or not anybody
+        narrowed anything.
+        """
+        kept = tuple(
+            stop
+            for stop in self.stops
+            if (not serial or stop.licence_serial == serial)
+            and (not channel or stop.channel == channel)
+        )
+        dropped = tuple(
+            f"{stop.licence_serial} on {stop.channel}: left out of this run"
+            for stop in self.stops
+            if stop not in kept
+        )
+        return Plan(kept, (*self.skipped, *dropped))
+
     def channels(self) -> tuple[str, ...]:
         """Return the channels this plan will visit."""
         return tuple(sorted({stop.channel for stop in self.stops}))

@@ -159,3 +159,60 @@ def test_a_bundle_gives_back_a_transport_that_answers_out_of_it(tmp_path: Path) 
 
     bundle = write_bundle(tmp_path)
     assert isinstance(transport_for(bundle, False), ReplayTransport)
+
+
+def test_a_plan_can_be_narrowed_to_one_channel(run: Run) -> None:
+    stock(run)
+    result = run("harvest", "plan", "--on", "2025-09-15", "--channel", "quayside")
+    assert result.exit_code == 0
+    assert "seaboard" not in result.output
+
+
+def test_a_plan_can_be_narrowed_to_one_licence(run: Run) -> None:
+    stock(run)
+    result = run("harvest", "plan", "--on", "2025-09-15", "--licence", REF)
+    assert result.exit_code == 0
+    assert "seaboard" in result.output
+
+
+def test_narrowing_a_plan_to_a_licence_nobody_registered_is_refused(run: Run) -> None:
+    stock(run)
+    from tariffpeg.ids import format_licence_ref
+
+    result = run("harvest", "plan", "--licence", format_licence_ref(9999))
+    assert result.exit_code == 3
+
+
+def test_a_run_narrowed_to_another_channel_reads_nothing(run: Run, tmp_path: Path) -> None:
+    stock(run)
+    result = run(
+        "harvest",
+        "run",
+        "--profiles",
+        str(write_profiles(tmp_path)),
+        "--bundle",
+        str(write_bundle(tmp_path)),
+        "--on",
+        "2025-09-15",
+        "--channel",
+        "quayside",
+    )
+    assert result.exit_code == 0
+    assert "0 pages read, 0 reviews added" in result.output
+
+
+def test_a_run_narrowed_to_the_right_channel_still_reads(run: Run, tmp_path: Path) -> None:
+    stock(run)
+    result = run(
+        "harvest",
+        "run",
+        "--profiles",
+        str(write_profiles(tmp_path)),
+        "--bundle",
+        str(write_bundle(tmp_path)),
+        "--on",
+        "2025-09-15",
+        "--channel",
+        "seaboard",
+    )
+    assert "3 reviews added" in result.output

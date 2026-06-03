@@ -174,6 +174,8 @@ Say where the next harvest would go.
 | --- | --- | --- |
 | `--at` |  | The month to measure the sample at. |
 | `--on` |  | The day the harvest is being run on. |
+| `--licence` |  | Only this licence. |
+| `--channel` |  | Only this channel. |
 | `--skipped` |  | Also say what was left out and why. |
 
 ### `tariffpeg harvest run`
@@ -187,6 +189,8 @@ Read the channels and put what comes back into the store.
 | `--live` |  | Actually reach the channels. |
 | `--at` |  | The month to measure the sample at. |
 | `--on` |  | The day the harvest is being run on. |
+| `--licence` |  | Only this licence. |
+| `--channel` |  | Only this channel. |
 | `--problems` |  | Also print what each page could not read. |
 
 ## `tariffpeg letter`
