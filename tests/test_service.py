@@ -226,3 +226,9 @@ def test_a_retention_plan_protects_what_is_quoted(wired: Database) -> None:
     plan = service.retention_plan(wired, dt2.date(2026, 1, 1), AT)
     assert plan.dropping == ()
     assert plan.kept_in_use == (DIGEST,)
+
+
+def test_the_locality_breakdown_covers_the_active_licences(wired: Database) -> None:
+    found = service.localities(wired, AT)
+    assert [place.locality for place in found] == ["Porthgwarra"]
+    assert found[0].licences == 1

@@ -584,6 +584,14 @@ List what the unit would do about every active licence.
 | `--at` |  | The month to decide at. |
 | `--needing-a-visit` |  | Only the ones that send somebody out. |
 
+### `tariffpeg triage locality`
+
+Print the figures broken down by where the premises are.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to decide at. |
+
 ### `tariffpeg triage return`
 
 Print the return the unit files for a month.

@@ -10,6 +10,8 @@ from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
 from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.report.explanation import explain
+from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
+from tariffpeg.report.locality import unsampled
 from tariffpeg.report.rows import Column
 from tariffpeg.report.summary import COLUMNS as RETURN_COLUMNS
 from tariffpeg.store.licences import LicenceStore
@@ -172,3 +174,19 @@ def explain_command(ctx: Context, ref: str, at: str) -> None:
         licence = LicenceStore(ctx.store()).by_ref(ref)
         file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
     ctx.say(*explain(file).lines())
+
+
+@triage_group.command(name="locality")
+@click.option("--at", "at", default="", help="The month to decide at.")
+@click.pass_obj
+def locality_command(ctx: Context, at: str) -> None:
+    """Print the figures broken down by where the premises are."""
+    with refusals():
+        places = service.localities(ctx.store(), month_or_now(at, ctx))
+    if not places:
+        ctx.say("no active licence is on the register")
+        return
+    ctx.emit([place.row() for place in places], PLACE_COLUMNS)
+    nothing = unsampled(places)
+    if nothing:
+        ctx.say("", "nothing is properly sampled in: " + ", ".join(nothing))

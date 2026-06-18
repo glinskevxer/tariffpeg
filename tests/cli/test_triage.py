@@ -108,3 +108,24 @@ def test_the_explanation_of_a_licence_nobody_registered_is_refused(run: Run) -> 
     from tariffpeg.ids import format_licence_ref
 
     assert run("triage", "explain", format_licence_ref(9999)).exit_code == 3
+
+
+def test_the_locality_breakdown_prints_one_row_per_place(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "locality", "--at", "2025-09")
+    assert result.exit_code == 0
+    assert "Porthgwarra" in result.output
+    assert "worst disposition" in result.output
+
+
+def test_the_locality_breakdown_names_the_places_with_nothing_sampled(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "locality", "--at", "2025-09")
+    assert "nothing is properly sampled in: Porthgwarra" in result.output
+
+
+def test_a_register_with_no_active_licence_says_so(run: Run) -> None:
+    run("db", "migrate")
+    assert "no active licence is on the register" in run("triage", "locality").output

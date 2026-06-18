@@ -26,6 +26,7 @@ from tariffpeg.model.listing import Listing
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
+from tariffpeg.report.locality import Place, by_locality
 from tariffpeg.report.summary import Return, compile_return
 from tariffpeg.sample.calibration import TOLERANCE, Drift, look_back
 from tariffpeg.sample.coverage import Coverage, measure
@@ -234,3 +235,18 @@ def retention_plan(
 ) -> Prune:
     """Return what a retention run would drop, protecting what is quoted."""
     return build_prune(db, before, quoted_digests(db, at, pack, regime, rules))
+
+
+def localities(
+    db: Database,
+    at: StayMonth,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> tuple[Place, ...]:
+    """Return the figures broken down by where the premises are."""
+    return by_locality(
+        LicenceStore(db).all(),
+        coverages(db, at, regime, rules),
+        decisions(db, at, pack, regime, rules),
+    )
