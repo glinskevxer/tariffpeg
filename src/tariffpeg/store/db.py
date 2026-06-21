@@ -114,6 +114,41 @@ class Database:
         ).fetchall()
         return tuple(str(row["name"]) for row in rows)
 
+    def backup_to(self, path: str | Path) -> Path:
+        """Copy the store to another file, consistently, while it is open.
+
+        SQLite has a backup interface that takes a copy without stopping the
+        writers. Copying the file with the operating system does not, and the
+        copy it makes of a store in write ahead mode is missing whatever is in
+        the log, which is the part somebody wanted backed up.
+        """
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        other = connect(target)
+        try:
+            self.conn.backup(other)
+        finally:
+            other.close()
+        return target
+
+    def reclaim(self) -> int:
+        """Compact the file and return how many bytes it gave back."""
+        before = self.byte_size()
+        self.conn.execute("VACUUM")
+        return max(0, before - self.byte_size())
+
+    def byte_size(self) -> int:
+        """Return how large the store proper is, in bytes.
+
+        This counts pages, not what the operating system says the file takes
+        up on disk. A store in write ahead mode carries a log beside it that
+        grows and is folded back in on its own schedule, and counting that as
+        part of the store makes a compaction look like it did nothing.
+        """
+        page_size = int(self.conn.execute("PRAGMA page_size").fetchone()[0])
+        pages = int(self.conn.execute("PRAGMA page_count").fetchone()[0])
+        return page_size * pages
+
     def integrity_problems(self) -> tuple[str, ...]:
         """Return what SQLite says is wrong with the file, if anything."""
         problems: list[str] = []

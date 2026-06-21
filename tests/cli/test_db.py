@@ -92,3 +92,25 @@ def test_the_status_says_how_many_pages_and_bytes_are_kept(migrated: Run) -> Non
     result = migrated("db", "status")
     assert "pages kept" in result.output
     assert "bytes kept" in result.output
+
+
+def test_a_backup_lands_where_it_was_asked_to_and_verifies(migrated: Run, tmp_path: Path) -> None:
+    target = tmp_path / "away" / "evidence.sqlite3"
+    result = migrated("db", "backup", str(target))
+    assert result.exit_code == 0
+    assert "it verifies" in result.output
+    assert target.exists()
+
+
+def test_a_backup_can_be_opened_as_a_store_in_its_own_right(migrated: Run, tmp_path: Path) -> None:
+    target = tmp_path / "evidence.sqlite3"
+    migrated("db", "backup", str(target))
+    result = CliRunner().invoke(main, ["--db", str(target), "db", "status"])
+    assert result.exit_code == 0
+    assert "licences" in result.output
+
+
+def test_reclaiming_says_how_much_the_store_gave_back(migrated: Run) -> None:
+    result = migrated("db", "reclaim")
+    assert result.exit_code == 0
+    assert "bytes reclaimed" in result.output

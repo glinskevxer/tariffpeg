@@ -126,3 +126,69 @@ def test_the_path_is_remembered_so_an_error_can_name_the_file(tmp_path: Path) ->
         assert store.path == str(target)
     with Database() as memory_store:
         assert memory_store.path == MEMORY
+
+
+def test_a_backup_is_a_working_store_with_the_same_rows(db: Database, tmp_path: Path) -> None:
+    db.conn.execute("CREATE TABLE note (line TEXT)")
+    db.conn.execute("INSERT INTO note (line) VALUES ('the roof leaks')")
+    target = db.backup_to(tmp_path / "copies" / "evidence.sqlite3")
+    assert target.exists()
+    with Database(target) as copy:
+        assert copy.integrity_problems() == ()
+        rows = copy.conn.execute("SELECT line FROM note").fetchall()
+    assert [row["line"] for row in rows] == ["the roof leaks"]
+
+
+def test_a_backup_carries_writes_that_are_still_in_the_log(tmp_path: Path) -> None:
+    with Database(tmp_path / "live.sqlite3") as store:
+        store.conn.execute("CREATE TABLE note (line TEXT)")
+        with store.transaction() as conn:
+            conn.execute("INSERT INTO note (line) VALUES ('written under wal')")
+        target = store.backup_to(tmp_path / "copy.sqlite3")
+    with Database(target) as copy:
+        assert copy.conn.execute("SELECT count(*) FROM note").fetchone()[0] == 1
+
+
+def test_backing_up_does_not_disturb_the_store_it_copied(db: Database, tmp_path: Path) -> None:
+    db.conn.execute("CREATE TABLE note (line TEXT)")
+    db.backup_to(tmp_path / "copy.sqlite3")
+    db.conn.execute("INSERT INTO note (line) VALUES ('still writable')")
+    assert db.conn.execute("SELECT count(*) FROM note").fetchone()[0] == 1
+
+
+def test_a_store_grows_as_rows_are_written_into_it() -> None:
+    with Database() as store:
+        empty = store.byte_size()
+        store.conn.execute("CREATE TABLE note (line TEXT)")
+        store.conn.executemany(
+            "INSERT INTO note (line) VALUES (?)", [("x" * 400,) for _ in range(200)]
+        )
+        assert store.byte_size() > empty
+
+
+def test_the_size_is_the_pages_and_not_what_the_log_beside_it_weighs(tmp_path: Path) -> None:
+    target = tmp_path / "logged.sqlite3"
+    with Database(target) as store:
+        store.conn.execute("CREATE TABLE note (line TEXT)")
+        with store.transaction() as conn:
+            conn.executemany(
+                "INSERT INTO note (line) VALUES (?)", [("x" * 400,) for _ in range(200)]
+            )
+        assert store.byte_size() > target.stat().st_size
+
+
+def test_reclaiming_gives_back_the_pages_a_delete_freed(tmp_path: Path) -> None:
+    with Database(tmp_path / "fat.sqlite3") as store:
+        store.conn.execute("CREATE TABLE note (line TEXT)")
+        with store.transaction() as conn:
+            conn.executemany(
+                "INSERT INTO note (line) VALUES (?)",
+                [("x" * 400,) for _ in range(400)],
+            )
+        with store.transaction() as conn:
+            conn.execute("DELETE FROM note")
+        assert store.reclaim() > 0
+
+
+def test_reclaiming_a_store_with_nothing_to_give_back_frees_nothing(db: Database) -> None:
+    assert db.reclaim() == 0

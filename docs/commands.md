@@ -136,6 +136,14 @@ Print the settings in force.
 
 Look after the evidence store.
 
+### `tariffpeg db backup`
+
+Copy the store to another file while it is still open.
+
+| what | and | why |
+| --- | --- | --- |
+| `path` | argument |  |
+
 ### `tariffpeg db migrate`
 
 Bring the store up to the schema this version expects.
@@ -153,6 +161,10 @@ Drop the page bodies nothing is relying on any more.
 | `--before` | required | Drop page bodies fetched before this day. |
 | `--at` |  | The month to reckon live case files at. |
 | `--run` |  | Actually drop them. |
+
+### `tariffpeg db reclaim`
+
+Compact the store and say how much it gave back.
 
 ### `tariffpeg db status`
 

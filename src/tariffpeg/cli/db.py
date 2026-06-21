@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import click
 
@@ -128,3 +129,30 @@ def prune_command(ctx: Context, before: dt.datetime, at: str, go: bool) -> None:
     with refusals():
         went = run_prune(ctx.store(), plan)
     ctx.say(f"{went} page bodies dropped")
+
+
+@db_group.command(name="backup")
+@click.argument("path", type=click.Path(path_type=Path))
+@click.pass_obj
+def backup_command(ctx: Context, path: Path) -> None:
+    """Copy the store to another file while it is still open."""
+    store = ctx.store()
+    with refusals():
+        target = store.backup_to(path)
+        with Database(target) as copy:
+            problems = copy.integrity_problems()
+    if problems:
+        for problem in problems:
+            ctx.say(problem)
+        raise click.exceptions.Exit(5)
+    ctx.say(f"copied {store.byte_size()} bytes to {target}, and it verifies")
+
+
+@db_group.command(name="reclaim")
+@click.pass_obj
+def reclaim_command(ctx: Context) -> None:
+    """Compact the store and say how much it gave back."""
+    store = ctx.store()
+    with refusals():
+        freed = store.reclaim()
+    ctx.say(f"{freed} bytes reclaimed, the store is now {store.byte_size()} bytes")
