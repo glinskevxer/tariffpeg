@@ -4,9 +4,20 @@ from __future__ import annotations
 
 import pytest
 
-from tariffpeg.claims.pack import METRES_A_MINUTE_WALKING, PACK, RULES
+from tariffpeg.claims.pack import (
+    ADDED_IN_TWO,
+    METRES_A_MILE,
+    METRES_A_MINUTE_WALKING,
+    PACK,
+    PACK_ONE,
+    PACK_ONE_RULES,
+    PACK_TWO,
+    PACKS,
+    pack_numbered,
+    published_versions,
+)
 from tariffpeg.claims.rules import ClaimRule, Persistence, Polarity
-from tariffpeg.errors import Invalid
+from tariffpeg.errors import Invalid, NotFound
 
 CATCHES = {
     "lift-absent": "There is no lift and our room was on the third floor.",
@@ -44,6 +55,18 @@ CATCHES = {
     "station-minutes": "A 20 minute walk to the station with cases.",
     "station-metres-after": "The station is 900 metres away.",
     "station-minutes-after": "The station is 20 minutes walk from the door.",
+    "entrance-down-to-the-door": "There are steps down to the door from the pavement.",
+    "lift-too-small": "The lift was tiny and only fits two people with a case.",
+    "bathroom-one-between": "One bathroom between the four rooms on that floor.",
+    "breakfast-paid-for": "We paid extra for breakfast on both mornings.",
+    "parking-full": "The car park was full every evening after seven.",
+    "pets-charged-for": "They charged five pounds a night for the dog.",
+    "late-arrival-key-box": "We let ourselves in with the key safe by the door.",
+    "shore-miles": "It is a good 2 miles to the beach along the lane.",
+    "station-miles": "About 3 miles to the station, so you want a car.",
+    "rooms-in-the-name": "A 7 bedroom guest house right on the front.",
+    "beds-sleeps-up-to": "It sleeps up to 9 with the sofa bed made up.",
+    "parking-spaces-there-are": "There are 3 spaces at the side of the house.",
 }
 
 LEAVES_ALONE = (
@@ -54,7 +77,7 @@ LEAVES_ALONE = (
 
 
 def test_every_rule_in_the_pack_has_a_case_that_shows_what_it_catches() -> None:
-    assert set(CATCHES) == {rule.rule_id for rule in RULES}
+    assert set(CATCHES) == {rule.rule_id for rule in PACK.rules}
 
 
 @pytest.mark.parametrize("rule_id", sorted(CATCHES))
@@ -106,13 +129,13 @@ def test_a_missing_lift_is_structural_and_a_broken_one_is_not() -> None:
 
 
 def test_every_rule_that_denies_a_particular_has_a_partner_that_affirms_it() -> None:
-    denied = {rule.claim_key for rule in RULES if rule.polarity is Polarity.DENIES}
-    affirmed = {rule.claim_key for rule in RULES if rule.polarity is Polarity.AFFIRMS}
+    denied = {rule.claim_key for rule in PACK.rules if rule.polarity is Polarity.DENIES}
+    affirmed = {rule.claim_key for rule in PACK.rules if rule.polarity is Polarity.AFFIRMS}
     assert denied <= affirmed
 
 
 def test_every_rule_that_states_a_value_carries_a_scale() -> None:
-    for rule in RULES:
+    for rule in PACK.rules:
         if rule.polarity is Polarity.STATES:
             assert rule.value_scale >= 1
 
@@ -144,10 +167,59 @@ def test_only_a_stated_value_can_be_scaled() -> None:
 
 
 def test_the_pack_carries_a_version_a_case_file_can_cite() -> None:
-    assert PACK.version == 1
-    assert len(PACK.rules) == len(RULES)
+    assert PACK.version == 2
+    assert PACK is PACK_TWO
+    assert len(PACK.rules) == len(PACK_ONE_RULES) + len(ADDED_IN_TWO)
 
 
 def test_the_notes_say_what_the_two_lift_rules_are_for() -> None:
     assert "none at all" in PACK.rule("lift-absent").note
     assert "was not working" in PACK.rule("lift-out-of-order").note
+
+
+def test_the_pack_in_force_is_the_last_one_published() -> None:
+    assert PACKS[-1] is PACK
+    assert published_versions() == (1, 2)
+
+
+def test_an_older_pack_can_still_be_asked_for_by_number() -> None:
+    assert pack_numbered(1) is PACK_ONE
+    assert pack_numbered(2) is PACK_TWO
+
+
+def test_a_pack_version_this_build_does_not_carry_is_refused() -> None:
+    with pytest.raises(NotFound, match="rule pack"):
+        pack_numbered(9)
+
+
+def test_pack_one_is_left_alone_by_everything_pack_two_added() -> None:
+    added = {rule.rule_id for rule in ADDED_IN_TWO}
+    assert added & {rule.rule_id for rule in PACK_ONE_RULES} == set()
+    assert PACK_ONE.rules == PACK_ONE_RULES
+
+
+def test_a_body_only_pack_two_reads_says_nothing_under_pack_one() -> None:
+    body = CATCHES["bathroom-one-between"]
+    assert PACK_ONE.read(body) == ()
+    assert {a.rule_id for a in PACK_TWO.read(body)} == {"bathroom-one-between"}
+
+
+def test_a_distance_in_miles_is_converted_to_metres() -> None:
+    found = [a for a in PACK.read(CATCHES["shore-miles"]) if a.rule_id == "shore-miles"]
+    assert found[0].value == 2 * METRES_A_MILE
+
+
+def test_a_distance_in_miles_is_weighed_lighter_than_one_in_metres() -> None:
+    assert PACK.rule("shore-miles").strength < PACK.rule("shore-metres").strength
+
+
+def test_a_full_car_park_says_there_is_one_but_only_for_that_week() -> None:
+    rule = PACK.rule("parking-full")
+    assert rule.polarity is Polarity.AFFIRMS
+    assert rule.persistence is Persistence.TRANSIENT
+
+
+def test_a_key_safe_is_read_as_a_door_nobody_staffs() -> None:
+    rule = PACK.rule("late-arrival-key-box")
+    assert rule.claim_key == "late_arrival"
+    assert rule.polarity is Polarity.DENIES

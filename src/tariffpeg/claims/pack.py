@@ -13,16 +13,21 @@ after pack five is published.
 from __future__ import annotations
 
 from tariffpeg.claims.rules import ClaimRule, Persistence, Polarity, RulePack
+from tariffpeg.errors import NotFound
 
 METRES_A_MINUTE_WALKING = 80
 """What the unit converts a walk in minutes to. Guests write about minutes and
 the licence is written in metres, so somewhere a number has to be picked. This
 one is in the licensing guidance."""
 
+METRES_A_MILE = 1609
+"""Guests who write in miles are rounding to the half mile at best, so a rule
+that reads one carries less weight than the same distance written in metres."""
+
 STRUCTURAL = Persistence.STRUCTURAL
 TRANSIENT = Persistence.TRANSIENT
 
-RULES = (
+PACK_ONE_RULES = (
     ClaimRule(
         "lift-absent",
         "lift",
@@ -312,7 +317,146 @@ RULES = (
         value_scale=METRES_A_MINUTE_WALKING,
     ),
 )
-"""Every published rule, in the order the pack lists them."""
+"""The rules as pack one published them.
 
-PACK = RulePack(1, RULES)
+This tuple is frozen. A case file that cites pack one has to be answerable in
+terms of pack one however many packs have been published since, and the only
+way to promise that is to leave the list alone and add to a new one.
+"""
+
+ADDED_IN_TWO = (
+    ClaimRule(
+        "entrance-down-to-the-door",
+        "step_free_entrance",
+        "(down some steps|steps down|down a flight) ... (to the door|to reception|to the entrance)",
+        Polarity.DENIES,
+        STRUCTURAL,
+        4,
+        note="a basement entrance is as much of a barrier as one up a step",
+    ),
+    ClaimRule(
+        "lift-too-small",
+        "lift",
+        "(lift|elevator) ... (was tiny|too small|only fits|barely fits)",
+        Polarity.AFFIRMS,
+        STRUCTURAL,
+        2,
+        note="a complaint about the lift is still evidence that there is one",
+    ),
+    ClaimRule(
+        "bathroom-one-between",
+        "en_suite_all",
+        "(one bathroom|a single bathroom|one shower) ... (between|for all|for everyone)",
+        Polarity.DENIES,
+        STRUCTURAL,
+        4,
+    ),
+    ClaimRule(
+        "breakfast-paid-for",
+        "breakfast_included",
+        "(paid|charged|we were charged) ... (for breakfast|for the breakfast)",
+        Polarity.DENIES,
+        STRUCTURAL,
+        3,
+    ),
+    ClaimRule(
+        "parking-full",
+        "parking_on_site",
+        "(car park|the parking) ... (was full|never a space|always full)",
+        Polarity.AFFIRMS,
+        TRANSIENT,
+        1,
+        note="a full car park is a car park",
+    ),
+    ClaimRule(
+        "pets-charged-for",
+        "pets_accepted",
+        "(charged|a charge|extra) ... (for the dog|for our dog|per dog)",
+        Polarity.AFFIRMS,
+        STRUCTURAL,
+        2,
+        note="a charge for the dog means the dog was taken",
+    ),
+    ClaimRule(
+        "late-arrival-key-box",
+        "late_arrival",
+        "(key box|key safe|lock box|code for the box)",
+        Polarity.DENIES,
+        STRUCTURAL,
+        3,
+        note="a key safe is what a premises uses instead of staffing the door",
+    ),
+    ClaimRule(
+        "shore-miles",
+        "shore_distance",
+        "# (mile|miles) ... (beach|shore|sea|sand)",
+        Polarity.STATES,
+        STRUCTURAL,
+        1,
+        value_scale=METRES_A_MILE,
+    ),
+    ClaimRule(
+        "station-miles",
+        "station_distance",
+        "# (mile|miles) ... (station|platform)",
+        Polarity.STATES,
+        STRUCTURAL,
+        1,
+        value_scale=METRES_A_MILE,
+    ),
+    ClaimRule(
+        "rooms-in-the-name",
+        "let_rooms",
+        "# (bedroom|bedroomed) (guest house|guesthouse|b and b|hotel)",
+        Polarity.STATES,
+        STRUCTURAL,
+        3,
+    ),
+    ClaimRule(
+        "beds-sleeps-up-to",
+        "bed_spaces",
+        "(sleeps up to|accommodates|room for) #",
+        Polarity.STATES,
+        STRUCTURAL,
+        2,
+    ),
+    ClaimRule(
+        "parking-spaces-there-are",
+        "parking_spaces",
+        "(there are|there were|they have) # (spaces|parking spaces)",
+        Polarity.STATES,
+        STRUCTURAL,
+        3,
+    ),
+)
+"""What pack two added on top of pack one."""
+
+PACK_ONE = RulePack(1, PACK_ONE_RULES)
+"""The first published pack, kept so an old case file can still be read."""
+
+PACK_TWO = RulePack(2, (*PACK_ONE_RULES, *ADDED_IN_TWO))
+"""The pack in force."""
+
+PACKS = (PACK_ONE, PACK_TWO)
+"""Every published pack, oldest first."""
+
+PACK = PACK_TWO
 """The pack a case file cites unless it says otherwise."""
+
+
+def pack_numbered(version: int) -> RulePack:
+    """Return a published pack by its version, or refuse.
+
+    Refusing beats falling back to the pack in force. A case file that names a
+    version this build does not carry has to stop, because reading it against a
+    later pack quietly changes what the operator was told.
+    """
+    for pack in PACKS:
+        if pack.version == version:
+            return pack
+    raise NotFound("rule pack", str(version))
+
+
+def published_versions() -> tuple[int, ...]:
+    """Return the pack versions this build can read a case file against."""
+    return tuple(pack.version for pack in PACKS)

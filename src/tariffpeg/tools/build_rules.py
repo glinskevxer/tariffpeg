@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import sys
 
-from tariffpeg.claims.pack import METRES_A_MINUTE_WALKING, PACK
+from tariffpeg.claims.pack import (
+    ADDED_IN_TWO,
+    METRES_A_MILE,
+    METRES_A_MINUTE_WALKING,
+    PACK,
+    published_versions,
+)
 from tariffpeg.model.particulars import spec_for
 from tariffpeg.tools.document import render, run, table
 
@@ -27,7 +33,15 @@ def body() -> list[str]:
         " different rates and the second needs company before it is worth a"
         " visit.",
         "",
-        f"A walk in minutes is read as {METRES_A_MINUTE_WALKING} metres a minute.",
+        f"A walk in minutes is read as {METRES_A_MINUTE_WALKING} metres a minute,"
+        f" and a distance in miles as {METRES_A_MILE} metres a mile.",
+        "",
+        "Published packs: "
+        + ", ".join(str(number) for number in published_versions())
+        + ". An older pack stays readable so that a case file which cited it can"
+        " still be answered in its own terms.",
+        "",
+        "Added since pack one: " + ", ".join(f"`{rule.rule_id}`" for rule in ADDED_IN_TWO) + ".",
         "",
     ]
     for claim_key in PACK.claim_keys():
