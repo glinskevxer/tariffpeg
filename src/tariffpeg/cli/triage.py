@@ -7,7 +7,7 @@ import datetime as dt
 import click
 
 from tariffpeg import service
-from tariffpeg.cli.context import Context, refusals
+from tariffpeg.cli.context import Context, pack_asked_for, pack_option, refusals
 from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.report.explanation import explain
 from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
@@ -50,13 +50,14 @@ def triage_group() -> None:
 @triage_group.command(name="list")
 @click.option("--at", "at", default="", help="The month to decide at.")
 @click.option("--needing-a-visit", is_flag=True, help="Only the ones that send somebody out.")
+@pack_option
 @click.pass_obj
-def list_command(ctx: Context, at: str, needing_a_visit: bool) -> None:
+def list_command(ctx: Context, at: str, needing_a_visit: bool, pack_version: int) -> None:
     """List what the unit would do about every active licence."""
     store = ctx.store()
     with refusals():
         month = month_or_now(at, ctx)
-        found = service.decisions(store, month)
+        found = service.decisions(store, month, pack_asked_for(pack_version))
         names = {licence.serial: licence.trading_name for licence in LicenceStore(store).all()}
     rows = [
         {
@@ -79,13 +80,15 @@ def list_command(ctx: Context, at: str, needing_a_visit: bool) -> None:
 @triage_group.command(name="show")
 @click.argument("ref")
 @click.option("--at", "at", default="", help="The month to decide at.")
+@pack_option
 @click.pass_obj
-def show_command(ctx: Context, ref: str, at: str) -> None:
+def show_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     """Print the findings behind one decision."""
     with refusals():
+        pack = pack_asked_for(pack_version)
         licence = LicenceStore(ctx.store()).by_ref(ref)
         month = month_or_now(at, ctx)
-        file = service.case_for(ctx.store(), licence, month)
+        file = service.case_for(ctx.store(), licence, month, pack)
     ctx.say(f"{licence.ref}  {licence.trading_name}", *file.decision.reasons, "")
     rows = [
         {
@@ -167,12 +170,14 @@ def return_command(ctx: Context, at: str) -> None:
 @triage_group.command(name="explain")
 @click.argument("ref")
 @click.option("--at", "at", default="", help="The month to decide at.")
+@pack_option
 @click.pass_obj
-def explain_command(ctx: Context, ref: str, at: str) -> None:
+def explain_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     """Print the arithmetic behind one decision, step by step."""
     with refusals():
+        pack = pack_asked_for(pack_version)
         licence = LicenceStore(ctx.store()).by_ref(ref)
-        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
+        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx), pack)
     ctx.say(*explain(file).lines())
 
 

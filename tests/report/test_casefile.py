@@ -218,3 +218,11 @@ def test_a_case_file_and_its_quotations_are_the_shapes_they_say(
     file = build(anchor, reviews(), channels, coverage(), [], PACK, AT, captures())
     assert isinstance(file, CaseFile)
     assert all(isinstance(item, Quotation) for item in file.quotations)
+
+
+def test_the_heading_names_the_pack_the_file_was_read_under(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    file = build(anchor, reviews(), channels, coverage(), [], PACK, AT, captures())
+    assert file.pack_version == PACK.version
+    assert f"read under rule pack {PACK.version}" in file.heading()

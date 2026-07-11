@@ -70,6 +70,7 @@ class CaseFile:
     notices: tuple[Remediation, ...]
     reviews_by_key: Mapping[str, Review]
     visit: Booking | Refusal | None = None
+    pack_version: int = 0
 
     def quotations_for(self, claim_key: str) -> tuple[Quotation, ...]:
         """Return the quotations behind one finding."""
@@ -82,6 +83,7 @@ class CaseFile:
             f"operator {self.licence.operator_name}, {self.licence.band()} keys,"
             f" {self.licence.particular('let_rooms')} let rooms",
             f"decided at {self.decided_at}, disposition {self.decision.disposition}",
+            f"read under rule pack {self.pack_version}",
         )
 
     def findings_block(self) -> tuple[str, ...]:
@@ -183,6 +185,7 @@ def build(
         notices=tuple(sorted(notices, key=lambda notice: (notice.claim_key, notice.reference))),
         reviews_by_key=by_key,
         visit=visit,
+        pack_version=pack.version,
     )
 
 

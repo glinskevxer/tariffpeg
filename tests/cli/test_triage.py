@@ -129,3 +129,21 @@ def test_the_locality_breakdown_names_the_places_with_nothing_sampled(
 def test_a_register_with_no_active_licence_says_so(run: Run) -> None:
     run("db", "migrate")
     assert "no active licence is on the register" in run("triage", "locality").output
+
+
+def test_the_decisions_can_be_taken_under_an_older_pack(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "list", "--at", "2025-08", "--pack", "1")
+    assert result.exit_code == 0
+
+
+def test_an_explanation_can_be_taken_under_an_older_pack(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "explain", REF, "--at", "2025-08", "--pack", "1")
+    assert result.exit_code == 0
+
+
+def test_a_decision_cannot_be_taken_under_a_pack_nobody_published(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "list", "--at", "2025-08", "--pack", "44")
+    assert result.exit_code == 3

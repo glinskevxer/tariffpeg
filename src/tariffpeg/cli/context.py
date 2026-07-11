@@ -8,13 +8,15 @@ output.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import click
 
+from tariffpeg.claims.pack import PACK, pack_numbered
+from tariffpeg.claims.rules import RulePack
 from tariffpeg.clock import Clock, SystemClock
 from tariffpeg.errors import TariffpegError
 from tariffpeg.report.rows import Column, as_csv, render
@@ -91,3 +93,28 @@ def _shout(err: TariffpegError) -> TariffpegError:
 def settings_from(path: str | None) -> Settings:
     """Return the settings, from a file if one was named."""
     return DEFAULTS if path is None else load(path)
+
+
+IN_FORCE = 0
+"""What the pack option holds when nobody asked for an older pack."""
+
+
+def pack_option(command: Callable[..., None]) -> Callable[..., None]:
+    """Add the option that reads a licence under a pack that is no longer in force.
+
+    An operator who was written to last year is answered in the terms they were
+    written to in, so every command that reads review text has to be able to go
+    back to the pack the letter cited.
+    """
+    return click.option(
+        "--pack",
+        "pack_version",
+        type=int,
+        default=IN_FORCE,
+        help="Read the reviews under this published rule pack instead of the one in force.",
+    )(command)
+
+
+def pack_asked_for(version: int) -> RulePack:
+    """Return the pack a command was pointed at, or the one in force."""
+    return PACK if version == IN_FORCE else pack_numbered(version)

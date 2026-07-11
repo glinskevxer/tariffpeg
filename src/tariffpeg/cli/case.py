@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 
 from tariffpeg import service
-from tariffpeg.cli.context import Context, refusals
+from tariffpeg.cli.context import Context, pack_asked_for, pack_option, refusals
 from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.report.casefile import Quotation
 from tariffpeg.report.rows import Column, as_csv
@@ -45,24 +45,28 @@ def case_group() -> None:
 @case_group.command(name="show")
 @click.argument("ref")
 @click.option("--at", "at", default="", help="The month to decide at.")
+@pack_option
 @click.pass_obj
-def show_command(ctx: Context, ref: str, at: str) -> None:
+def show_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     """Print the whole case file."""
     with refusals():
+        pack = pack_asked_for(pack_version)
         licence = LicenceStore(ctx.store()).by_ref(ref)
-        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
+        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx), pack)
     ctx.say(*file.lines())
 
 
 @case_group.command(name="quotations")
 @click.argument("ref")
 @click.option("--at", "at", default="", help="The month to decide at.")
+@pack_option
 @click.pass_obj
-def quotations_command(ctx: Context, ref: str, at: str) -> None:
+def quotations_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     """List the quotations behind a case, with the captures they came from."""
     with refusals():
+        pack = pack_asked_for(pack_version)
         licence = LicenceStore(ctx.store()).by_ref(ref)
-        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
+        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx), pack)
     if not file.quotations:
         ctx.say(f"{licence.ref} has nothing quoted against it")
         return
@@ -79,12 +83,14 @@ def quotations_command(ctx: Context, ref: str, at: str) -> None:
     help="The directory to write the file and its quotations into.",
 )
 @click.option("--at", "at", default="", help="The month to decide at.")
+@pack_option
 @click.pass_obj
-def export_command(ctx: Context, ref: str, directory: Path, at: str) -> None:
+def export_command(ctx: Context, ref: str, directory: Path, at: str, pack_version: int) -> None:
     """Write the case file and its quotations out as files."""
     with refusals():
+        pack = pack_asked_for(pack_version)
         licence = LicenceStore(ctx.store()).by_ref(ref)
-        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx))
+        file = service.case_for(ctx.store(), licence, month_or_now(at, ctx), pack)
     directory.mkdir(parents=True, exist_ok=True)
     document = directory / f"{licence.ref}.txt"
     document.write_text("\n".join(file.lines()) + "\n", encoding="utf-8", newline="\n")

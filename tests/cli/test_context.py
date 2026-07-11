@@ -4,7 +4,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tariffpeg.cli.context import EXIT_CODES, Context, exit_code_for, settings_from
+import click
+import pytest
+from click.testing import CliRunner
+
+from tariffpeg.claims.pack import PACK, PACK_ONE
+from tariffpeg.cli.context import (
+    EXIT_CODES,
+    IN_FORCE,
+    Context,
+    exit_code_for,
+    pack_asked_for,
+    pack_option,
+    settings_from,
+)
 from tariffpeg.errors import AlreadyExists, Conflict, FetchFailed, Invalid, NotFound, Refused
 from tariffpeg.settings import DEFAULTS
 from tests.cli.conftest import Run
@@ -75,3 +88,26 @@ def test_a_settings_file_that_is_not_there_is_reported(run: Run, tmp_path: Path)
     result = run("db", "status", extra=["--config", str(tmp_path / "nothing.toml")])
     assert result.exit_code != 0
     assert "no settings file" in result.output
+
+
+def test_a_command_that_names_no_pack_reads_under_the_one_in_force() -> None:
+    assert pack_asked_for(IN_FORCE) is PACK
+
+
+def test_a_command_can_ask_for_a_pack_that_is_no_longer_in_force() -> None:
+    assert pack_asked_for(1) is PACK_ONE
+
+
+def test_asking_for_a_pack_nobody_published_is_refused() -> None:
+    with pytest.raises(NotFound, match="rule pack"):
+        pack_asked_for(99)
+
+
+def test_the_pack_option_carries_the_version_into_the_command() -> None:
+    @click.command()
+    @pack_option
+    def show(pack_version: int) -> None:
+        click.echo(str(pack_version))
+
+    assert CliRunner().invoke(show, []).output.strip() == str(IN_FORCE)
+    assert CliRunner().invoke(show, ["--pack", "1"]).output.strip() == "1"

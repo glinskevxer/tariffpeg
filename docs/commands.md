@@ -24,6 +24,7 @@ Write the case file and its quotations out as files.
 | `ref` | argument |  |
 | `--to` | required | The directory to write the file and its quotations into. |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg case quotations`
 
@@ -33,6 +34,7 @@ List the quotations behind a case, with the captures they came from.
 | --- | --- | --- |
 | `ref` | argument |  |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg case show`
 
@@ -42,6 +44,7 @@ Print the whole case file.
 | --- | --- | --- |
 | `ref` | argument |  |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ## `tariffpeg channel`
 
@@ -586,6 +589,7 @@ Print the arithmetic behind one decision, step by step.
 | --- | --- | --- |
 | `ref` | argument |  |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg triage list`
 
@@ -595,6 +599,7 @@ List what the unit would do about every active licence.
 | --- | --- | --- |
 | `--at` |  | The month to decide at. |
 | `--needing-a-visit` |  | Only the ones that send somebody out. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg triage locality`
 
@@ -629,3 +634,4 @@ Print the findings behind one decision.
 | --- | --- | --- |
 | `ref` | argument |  |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |

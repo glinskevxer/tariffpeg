@@ -115,3 +115,23 @@ def test_a_quotation_row_shortens_the_digest_to_the_length_it_is_given() -> None
     )
     assert as_row(quotation, 19)["digest"] == digest[:19]
     assert as_row(quotation, len(digest))["digest"] == digest
+
+
+def test_the_case_file_says_which_pack_it_was_read_under(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("case", "show", REF, "--at", "2025-08")
+    assert result.exit_code == 0
+    assert "read under rule pack 2" in result.output
+
+
+def test_a_case_file_can_be_read_under_the_pack_a_letter_cited(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("case", "show", REF, "--at", "2025-08", "--pack", "1")
+    assert result.exit_code == 0
+    assert "read under rule pack 1" in result.output
+
+
+def test_a_case_file_cannot_be_read_under_a_pack_nobody_published(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("case", "show", REF, "--at", "2025-08", "--pack", "44")
+    assert result.exit_code == 3
