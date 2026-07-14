@@ -111,6 +111,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 ### harvest
 
+- `tariffpeg.harvest.budget`
 - `tariffpeg.harvest.plan`
 - `tariffpeg.harvest.runner`
 - `tariffpeg.harvest.session`

@@ -248,3 +248,20 @@ def test_a_month_of_visits_is_booked_against_the_diaries_it_was_given(
 def test_the_workload_covers_every_inspector_the_run_was_given(wired: Database) -> None:
     found = service.workload(wired, AT, dt.date(2025, 9, 15), [Diary("Trewin"), Diary("Ivell")])
     assert [load.inspector for load in found.loads] == ["Ivell", "Trewin"]
+
+
+def test_the_budget_reads_what_each_channel_has_already_had_today(wired: Database) -> None:
+    found = service.budget(
+        wired, service.plan(wired, AT, dt.date(2025, 9, 15)), dt.date(2025, 9, 15)
+    )
+    assert found.fits
+    assert all(allowance.spent == 0 for allowance in found.allowances)
+
+
+def test_a_plan_cut_to_the_budget_asks_for_no_more_than_the_day_allows(
+    wired: Database,
+) -> None:
+    day = dt.date(2025, 9, 15)
+    plan = service.plan(wired, AT, day)
+    cut = service.affordable(wired, plan, day)
+    assert cut.total_pages <= plan.total_pages

@@ -216,3 +216,32 @@ def test_a_run_narrowed_to_the_right_channel_still_reads(run: Run, tmp_path: Pat
         "seaboard",
     )
     assert "3 reviews added" in result.output
+
+
+def test_the_budget_says_what_the_next_harvest_costs_each_channel(run: Run) -> None:
+    stock(run)
+    result = run("harvest", "budget", "--at", "2025-09", "--on", "2025-09-15")
+    assert result.exit_code == 0
+    assert "channel" in result.output
+
+
+def test_a_plan_can_be_cut_down_to_what_the_day_allows(run: Run) -> None:
+    stock(run)
+    result = run("harvest", "plan", "--at", "2025-09", "--on", "2025-09-15", "--within-budget")
+    assert result.exit_code == 0
+
+
+def test_a_run_can_be_cut_down_to_what_the_day_allows(run: Run, tmp_path: Path) -> None:
+    stock(run)
+    result = run(
+        "harvest",
+        "run",
+        "--profiles",
+        str(write_profiles(tmp_path)),
+        "--bundle",
+        str(write_bundle(tmp_path)),
+        "--on",
+        "2025-09-15",
+        "--within-budget",
+    )
+    assert result.exit_code == 0

@@ -17,6 +17,8 @@ from tariffpeg.claims.rules import RulePack
 from tariffpeg.dedupe.syndication import DEFAULT_RULES, SyndicationRules
 from tariffpeg.errors import Invalid
 from tariffpeg.fetch.bundle import INDEX
+from tariffpeg.harvest.budget import Budget, spend_by_channel, trim
+from tariffpeg.harvest.budget import measure as measure_budget
 from tariffpeg.harvest.plan import Plan
 from tariffpeg.harvest.plan import build as build_plan
 from tariffpeg.model.capture import Capture
@@ -286,3 +288,16 @@ def workload(
     """Return what a month's visits would do to each inspector's diary."""
     round_ = visits(db, at, decided_on, diaries, holidays, pack, regime, rules)
     return spread(round_.bookings, diaries, round_.late)
+
+
+def budget(db: Database, plan: Plan, on: dt.date) -> Budget:
+    """Return what a plan would cost each channel against what the day has left."""
+    known = channels(db)
+    captures = CaptureStore(db)
+    spent = spend_by_channel(list(known), {slug: captures.spent_on(slug, on) for slug in known})
+    return measure_budget(plan, known, spent)
+
+
+def affordable(db: Database, plan: Plan, on: dt.date) -> Plan:
+    """Return the plan cut down to what the channels will allow today."""
+    return trim(plan, budget(db, plan, on))

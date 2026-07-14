@@ -30,6 +30,13 @@ PLAN_COLUMNS = (
     Column("pages", "pages", numeric=True),
     Column("reason", "why"),
 )
+BUDGET_COLUMNS = (
+    Column("channel", "channel"),
+    Column("ceiling", "a day", numeric=True),
+    Column("spent", "spent", numeric=True),
+    Column("wanted", "wanted", numeric=True),
+    Column("granted", "fits", numeric=True),
+)
 RUN_COLUMNS = (
     Column("licence", "licence", numeric=True),
     Column("channel", "channel"),
@@ -64,9 +71,21 @@ def harvest_group() -> None:
 @click.option("--licence", "ref", default="", help="Only this licence.")
 @click.option("--channel", default="", help="Only this channel.")
 @click.option("--skipped", is_flag=True, help="Also say what was left out and why.")
+@click.option(
+    "--within-budget",
+    "within_budget",
+    is_flag=True,
+    help="Cut the plan down to what the channels will allow today.",
+)
 @click.pass_obj
 def plan_command(
-    ctx: Context, at: str, on: dt.datetime | None, ref: str, channel: str, skipped: bool
+    ctx: Context,
+    at: str,
+    on: dt.datetime | None,
+    ref: str,
+    channel: str,
+    skipped: bool,
+    within_budget: bool,
 ) -> None:
     """Say where the next harvest would go."""
     with refusals():
@@ -76,6 +95,8 @@ def plan_command(
         serial = LicenceStore(ctx.store()).by_ref(ref).serial if ref else 0
         if serial or channel:
             plan = plan.narrowed(serial, channel)
+        if within_budget:
+            plan = service.affordable(ctx.store(), plan, day)
     rows = [
         {
             "licence": stop.licence_serial,
@@ -88,6 +109,43 @@ def plan_command(
     ctx.emit(rows, PLAN_COLUMNS)
     if skipped:
         ctx.say("", *plan.skipped)
+
+
+@harvest_group.command(name="budget")
+@click.option("--at", "at", default="", help="The month to measure the sample at.")
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the harvest is being run on.",
+)
+@click.pass_obj
+def budget_command(ctx: Context, at: str, on: dt.datetime | None) -> None:
+    """Say what the next harvest would cost each channel today."""
+    with refusals():
+        day = on.date() if on else ctx.clock.now().date()
+        found = service.budget(
+            ctx.store(), service.plan(ctx.store(), month_or_now(at, ctx), day), day
+        )
+    if not found.allowances:
+        ctx.say("the next harvest asks nothing of any channel")
+        return
+    rows = [
+        {
+            "channel": allowance.channel,
+            "ceiling": allowance.ceiling,
+            "spent": allowance.spent,
+            "wanted": allowance.wanted,
+            "granted": allowance.granted,
+        }
+        for allowance in found.allowances
+    ]
+    ctx.emit(rows, BUDGET_COLUMNS)
+    if found.fits:
+        ctx.say("", "the whole plan fits inside today")
+        return
+    ctx.say("", *found.lines())
 
 
 @harvest_group.command(name="run")
@@ -117,6 +175,12 @@ def plan_command(
 @click.option("--licence", "ref", default="", help="Only this licence.")
 @click.option("--channel", default="", help="Only this channel.")
 @click.option("--problems", is_flag=True, help="Also print what each page could not read.")
+@click.option(
+    "--within-budget",
+    "within_budget",
+    is_flag=True,
+    help="Cut the run down to what the channels will allow today.",
+)
 @click.pass_obj
 def run_command(
     ctx: Context,
@@ -128,6 +192,7 @@ def run_command(
     ref: str,
     channel: str,
     problems: bool,
+    within_budget: bool,
 ) -> None:
     """Read the channels and put what comes back into the store."""
     with refusals():
@@ -140,6 +205,8 @@ def run_command(
         serial = LicenceStore(store).by_ref(ref).serial if ref else 0
         if serial or channel:
             plan = plan.narrowed(serial, channel)
+        if within_budget:
+            plan = service.affordable(store, plan, day)
         runner = Runner(
             store,
             Session(transport),

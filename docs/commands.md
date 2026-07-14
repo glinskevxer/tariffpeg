@@ -181,6 +181,15 @@ Check the store against itself and against this version.
 
 Plan and run the reading of the channels.
 
+### `tariffpeg harvest budget`
+
+Say what the next harvest would cost each channel today.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to measure the sample at. |
+| `--on` |  | The day the harvest is being run on. |
+
 ### `tariffpeg harvest plan`
 
 Say where the next harvest would go.
@@ -192,6 +201,7 @@ Say where the next harvest would go.
 | `--licence` |  | Only this licence. |
 | `--channel` |  | Only this channel. |
 | `--skipped` |  | Also say what was left out and why. |
+| `--within-budget` |  | Cut the plan down to what the channels will allow today. |
 
 ### `tariffpeg harvest run`
 
@@ -207,6 +217,7 @@ Read the channels and put what comes back into the store.
 | `--licence` |  | Only this licence. |
 | `--channel` |  | Only this channel. |
 | `--problems` |  | Also print what each page could not read. |
+| `--within-budget` |  | Cut the run down to what the channels will allow today. |
 
 ## `tariffpeg letter`
 
