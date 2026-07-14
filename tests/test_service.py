@@ -19,6 +19,7 @@ from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.remediations import RemediationStore
 from tariffpeg.store.reviews import ReviewStore
+from tariffpeg.triage.schedule import Diary
 from tests.conftest import a_review as a_plain_review
 from tests.store.conftest import DIGEST, FETCHED, a_capture, a_channel, a_licence
 from tests.triage.conftest import NO_LIFT, NO_LIFT_AGAIN, a_review
@@ -232,3 +233,18 @@ def test_the_locality_breakdown_covers_the_active_licences(wired: Database) -> N
     found = service.localities(wired, AT)
     assert [place.locality for place in found] == ["Porthgwarra"]
     assert found[0].licences == 1
+
+
+def test_a_month_of_visits_is_booked_against_the_diaries_it_was_given(
+    wired: Database,
+) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    ReviewStore(wired).add(a_review("2", NO_LIFT_AGAIN), FETCHED)
+    booked = service.visits(wired, AT, dt.date(2025, 9, 15), [Diary("Trewin")])
+    assert booked.booked + len(booked.refusals) >= 0
+    assert all(item.inspector == "Trewin" for item in booked.bookings)
+
+
+def test_the_workload_covers_every_inspector_the_run_was_given(wired: Database) -> None:
+    found = service.workload(wired, AT, dt.date(2025, 9, 15), [Diary("Trewin"), Diary("Ivell")])
+    assert [load.inspector for load in found.loads] == ["Ivell", "Trewin"]

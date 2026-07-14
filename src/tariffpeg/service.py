@@ -9,7 +9,7 @@ making decisions belongs one layer down where it can be tested without a store.
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from tariffpeg.claims.pack import PACK
@@ -28,6 +28,7 @@ from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
 from tariffpeg.report.locality import Place, by_locality
 from tariffpeg.report.summary import Return, compile_return
+from tariffpeg.report.workload import Spread, spread
 from tariffpeg.sample.calibration import TOLERANCE, Drift, look_back
 from tariffpeg.sample.coverage import Coverage, measure
 from tariffpeg.sample.regime import PUBLISHED, Regime
@@ -41,6 +42,7 @@ from tariffpeg.store.retention import Prune
 from tariffpeg.store.retention import plan as build_prune
 from tariffpeg.store.reviews import ReviewStore
 from tariffpeg.triage.disposition import Decision, Thresholds
+from tariffpeg.triage.schedule import Diary, Round, Scheduler, book_all
 
 NEWLINE = chr(10)
 """What the bundle index is written with, whatever platform writes it."""
@@ -250,3 +252,37 @@ def localities(
         coverages(db, at, regime, rules),
         decisions(db, at, pack, regime, rules),
     )
+
+
+def visits(
+    db: Database,
+    at: StayMonth,
+    decided_on: dt.date,
+    diaries: Sequence[Diary],
+    holidays: frozenset[dt.date] = frozenset(),
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Round:
+    """Book a visit for everything a month's decisions ask for."""
+    licences = {licence.serial: licence for licence in LicenceStore(db).all()}
+    wanted = [
+        (licences[decision.licence_serial], decision.disposition)
+        for decision in decisions(db, at, pack, regime, rules)
+    ]
+    return book_all(Scheduler(diaries, holidays), wanted, decided_on)
+
+
+def workload(
+    db: Database,
+    at: StayMonth,
+    decided_on: dt.date,
+    diaries: Sequence[Diary],
+    holidays: frozenset[dt.date] = frozenset(),
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Spread:
+    """Return what a month's visits would do to each inspector's diary."""
+    round_ = visits(db, at, decided_on, diaries, holidays, pack, regime, rules)
+    return spread(round_.bookings, diaries, round_.late)

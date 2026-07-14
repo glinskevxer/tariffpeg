@@ -14,7 +14,9 @@ from tariffpeg.triage.schedule import (
     Booking,
     Diary,
     Refusal,
+    Round,
     Scheduler,
+    book_all,
     diaries_by_name,
 )
 from tariffpeg.workdays import add_working_days
@@ -168,3 +170,73 @@ def test_a_diary_knows_the_days_it_is_away() -> None:
 def test_the_diaries_can_be_looked_up_by_name() -> None:
     found = diaries_by_name([Diary("Trewin"), Diary("Angove")])
     assert sorted(found) == ["Angove", "Trewin"]
+
+
+def other(serial: int) -> Licence:
+    return Licence(
+        serial=serial,
+        trading_name="Gull Cottage",
+        operator_name="Nancarrow",
+        locality="Porthgwarra",
+        period_start=dt.date(2025, 1, 1),
+        period_end=dt.date(2026, 12, 31),
+        particulars={"grading_band": 2, "let_rooms": 3, "bed_spaces": 6},
+    )
+
+
+def test_a_round_books_every_visit_the_dispositions_ask_for() -> None:
+    wanted = [
+        (licence(), Disposition.URGENT),
+        (other(4022), Disposition.REINSPECTION),
+    ]
+    done = book_all(Scheduler([Diary("Trewin")]), wanted, DECIDED)
+    assert done.booked == 2
+    assert done.refusals == ()
+
+
+def test_a_round_leaves_out_the_dispositions_that_send_nobody() -> None:
+    wanted = [
+        (licence(), Disposition.NO_ACTION),
+        (other(4022), Disposition.DESK_ENQUIRY),
+    ]
+    done = book_all(Scheduler([Diary("Trewin")]), wanted, DECIDED)
+    assert done.booked == 0
+    assert done.refusals == ()
+
+
+def test_a_round_keeps_the_licence_nobody_could_be_sent_to() -> None:
+    shut = Licence(
+        serial=4021,
+        trading_name="The Anchor Rooms",
+        operator_name="Pellow and Daughter",
+        locality="Porthgwarra",
+        period_start=dt.date(2025, 1, 1),
+        period_end=dt.date(2025, 6, 30),
+        particulars={"grading_band": 3, "let_rooms": 9, "bed_spaces": 18},
+        closed_months=frozenset({2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}),
+    )
+    done = book_all(Scheduler([Diary("Trewin")]), [(shut, Disposition.URGENT)], DECIDED)
+    assert done.booked == 0
+    assert done.refusal_lines()[0].startswith("4021: ")
+
+
+def test_a_round_says_which_visits_missed_their_target() -> None:
+    wanted = [(licence(), Disposition.URGENT)] + [
+        (other(4030 + n), Disposition.URGENT) for n in range(8)
+    ]
+    done = book_all(Scheduler([Diary("Trewin", 1)]), wanted, DECIDED)
+    assert done.booked == 9
+    assert not done.all_in_time
+    assert len(done.late) >= 1
+
+
+def test_a_round_where_everything_made_its_target_says_so() -> None:
+    done = book_all(Scheduler([Diary("Trewin")]), [(licence(), Disposition.URGENT)], DECIDED)
+    assert done.all_in_time
+    assert done.late == frozenset()
+
+
+def test_a_round_that_was_asked_for_nothing_holds_nothing() -> None:
+    assert Round().booked == 0
+    assert Round().all_in_time
+    assert Round().refusal_lines() == ()

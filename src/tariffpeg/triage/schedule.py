@@ -151,3 +151,53 @@ class Scheduler:
 def diaries_by_name(diaries: Sequence[Diary]) -> Mapping[str, Diary]:
     """Return the diaries indexed by inspector name."""
     return {diary.name: diary for diary in diaries}
+
+
+@dataclass(frozen=True, slots=True)
+class Round:
+    """One scheduling run: what was booked, what was not, and what missed its target."""
+
+    bookings: tuple[Booking, ...] = ()
+    refusals: tuple[Refusal, ...] = ()
+    late: frozenset[int] = field(default_factory=frozenset)
+
+    @property
+    def booked(self) -> int:
+        """Return how many visits came out of the run."""
+        return len(self.bookings)
+
+    @property
+    def all_in_time(self) -> bool:
+        """Return whether every visit the run booked made its target."""
+        return not self.late
+
+    def refusal_lines(self) -> tuple[str, ...]:
+        """Return one line for each licence nobody could be sent to."""
+        return tuple(f"{item.licence_serial}: {item.reason}" for item in self.refusals)
+
+
+def book_all(
+    scheduler: Scheduler,
+    wanted: Sequence[tuple[Licence, Disposition]],
+    decided_on: dt.date,
+) -> Round:
+    """Book every visit a set of dispositions asks for, in the order given.
+
+    The order matters and it is the caller's to choose. The scheduler fills the
+    first free diary it finds, so whichever licence is offered first gets the
+    earliest day, and the run puts the heaviest case at the front.
+    """
+    bookings: list[Booking] = []
+    refusals: list[Refusal] = []
+    late: set[int] = set()
+    for licence, disposition in wanted:
+        if disposition not in TARGET_DAYS:
+            continue
+        outcome = scheduler.book(licence, disposition, decided_on)
+        if isinstance(outcome, Booking):
+            bookings.append(outcome)
+            if scheduler.overdue(outcome, decided_on):
+                late.add(outcome.licence_serial)
+        else:
+            refusals.append(outcome)
+    return Round(tuple(bookings), tuple(refusals), frozenset(late))

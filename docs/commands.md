@@ -625,6 +625,7 @@ Book a visit for everything that needs one.
 | --- | --- | --- |
 | `--at` |  | The month to decide at. |
 | `--on` |  | The day the decision is being made on. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg triage show`
 
@@ -634,4 +635,14 @@ Print the findings behind one decision.
 | --- | --- | --- |
 | `ref` | argument |  |
 | `--at` |  | The month to decide at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
+
+### `tariffpeg triage workload`
+
+Show what a month of visits would do to each inspector's diary.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to decide at. |
+| `--on` |  | The day the decision is being made on. |
 | `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |

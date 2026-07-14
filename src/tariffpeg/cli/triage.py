@@ -14,9 +14,9 @@ from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
 from tariffpeg.report.locality import unsampled
 from tariffpeg.report.rows import Column
 from tariffpeg.report.summary import COLUMNS as RETURN_COLUMNS
+from tariffpeg.report.workload import COLUMNS as WORKLOAD_COLUMNS
 from tariffpeg.store.licences import LicenceStore
-from tariffpeg.triage.disposition import Disposition
-from tariffpeg.triage.schedule import Booking, Diary, Scheduler
+from tariffpeg.triage.schedule import Booking, Diary
 
 DECISION_COLUMNS = (
     Column("licence", "licence", numeric=True),
@@ -106,6 +106,22 @@ def show_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     ctx.emit(rows, FINDING_COLUMNS)
 
 
+def diaries_of(ctx: Context) -> list[Diary]:
+    """Return a diary for each inspector the settings name."""
+    return [Diary(name, ctx.settings.weekly_capacity) for name in ctx.settings.inspectors]
+
+
+def visit_row(booking: Booking, late: frozenset[int]) -> dict[str, object]:
+    """Return the row one booked visit prints as."""
+    return {
+        "licence": booking.licence_serial,
+        "inspector": booking.inspector,
+        "day": booking.day.isoformat(),
+        "disposition": str(booking.disposition),
+        "late": booking.licence_serial in late,
+    }
+
+
 @triage_group.command(name="schedule")
 @click.option("--at", "at", default="", help="The month to decide at.")
 @click.option(
@@ -115,44 +131,56 @@ def show_command(ctx: Context, ref: str, at: str, pack_version: int) -> None:
     default=None,
     help="The day the decision is being made on.",
 )
+@pack_option
 @click.pass_obj
-def schedule_command(ctx: Context, at: str, on: dt.datetime | None) -> None:
+def schedule_command(ctx: Context, at: str, on: dt.datetime | None, pack_version: int) -> None:
     """Book a visit for everything that needs one."""
-    store = ctx.store()
     with refusals():
-        month = month_or_now(at, ctx)
-        decided_on = on.date() if on else ctx.clock.now().date()
-        found = service.decisions(store, month)
-        licences = {licence.serial: licence for licence in LicenceStore(store).all()}
-        scheduler = Scheduler(
-            [Diary(name, ctx.settings.weekly_capacity) for name in ctx.settings.inspectors]
+        booked = service.visits(
+            ctx.store(),
+            month_or_now(at, ctx),
+            on.date() if on else ctx.clock.now().date(),
+            diaries_of(ctx),
+            pack=pack_asked_for(pack_version),
         )
-        rows: list[dict[str, object]] = []
-        refused: list[str] = []
-        for decision in found:
-            if decision.disposition in (Disposition.NO_ACTION, Disposition.DESK_ENQUIRY):
-                continue
-            outcome = scheduler.book(
-                licences[decision.licence_serial], decision.disposition, decided_on
-            )
-            if isinstance(outcome, Booking):
-                rows.append(
-                    {
-                        "licence": outcome.licence_serial,
-                        "inspector": outcome.inspector,
-                        "day": outcome.day.isoformat(),
-                        "disposition": str(outcome.disposition),
-                        "late": scheduler.overdue(outcome, decided_on),
-                    }
-                )
-            else:
-                refused.append(f"{outcome.licence_serial}: {outcome.reason}")
-    if not rows:
+    if not booked.bookings:
         ctx.say("nothing needs a visit")
     else:
-        ctx.emit(rows, VISIT_COLUMNS)
-    if refused:
-        ctx.say("", *refused)
+        ctx.emit([visit_row(item, booked.late) for item in booked.bookings], VISIT_COLUMNS)
+    if booked.refusals:
+        ctx.say("", *booked.refusal_lines())
+
+
+@triage_group.command(name="workload")
+@click.option("--at", "at", default="", help="The month to decide at.")
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the decision is being made on.",
+)
+@pack_option
+@click.pass_obj
+def workload_command(ctx: Context, at: str, on: dt.datetime | None, pack_version: int) -> None:
+    """Show what a month of visits would do to each inspector's diary."""
+    with refusals():
+        found = service.workload(
+            ctx.store(),
+            month_or_now(at, ctx),
+            on.date() if on else ctx.clock.now().date(),
+            diaries_of(ctx),
+            pack=pack_asked_for(pack_version),
+        )
+    if not found.span:
+        ctx.say("no visit was booked, so there is nothing to spread")
+        return
+    ctx.emit(found.rows(), WORKLOAD_COLUMNS)
+    idle = found.idle()
+    if idle:
+        ctx.say("", "nothing was given to: " + ", ".join(idle))
+    if found.lopsided():
+        ctx.say("a week is full while somebody has nothing, so this run is worth doing again")
 
 
 @triage_group.command(name="return")

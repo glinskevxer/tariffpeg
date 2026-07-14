@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
+from tariffpeg.cli.context import Context
+from tariffpeg.cli.triage import diaries_of, visit_row
+from tariffpeg.settings import DEFAULTS
+from tariffpeg.triage.disposition import Disposition
+from tariffpeg.triage.schedule import Booking
 from tests.cli.conftest import Run
 from tests.cli.harvest_setup import REF, stock, write_bundle, write_profiles
 
@@ -147,3 +153,31 @@ def test_a_decision_cannot_be_taken_under_a_pack_nobody_published(run: Run, tmp_
     harvested(run, tmp_path)
     result = run("triage", "list", "--at", "2025-08", "--pack", "44")
     assert result.exit_code == 3
+
+
+def test_the_workload_says_there_is_nothing_to_spread_when_nobody_goes_out(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "workload", "--at", "2025-09", "--on", "2025-09-15")
+    assert result.exit_code == 0
+    assert "nothing to spread" in result.output
+
+
+def test_the_workload_reads_the_inspectors_out_of_the_settings(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "workload", "--at", "2025-08", "--on", "2025-08-15")
+    assert result.exit_code == 0
+
+
+def test_a_diary_is_opened_for_each_inspector_the_settings_name(tmp_path: Path) -> None:
+    ctx = Context(tmp_path / "evidence.sqlite3", DEFAULTS)
+    found = diaries_of(ctx)
+    assert [diary.name for diary in found] == list(DEFAULTS.inspectors)
+    assert all(diary.weekly_capacity == DEFAULTS.weekly_capacity for diary in found)
+
+
+def test_a_booked_visit_prints_whether_it_made_its_target() -> None:
+    booking = Booking(4021, "Trewin", dt.date(2025, 9, 18), Disposition.URGENT)
+    assert visit_row(booking, frozenset())["late"] is False
+    assert visit_row(booking, frozenset({4021}))["late"] is True

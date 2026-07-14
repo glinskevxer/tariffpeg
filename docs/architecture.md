@@ -131,6 +131,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.report.locality`
 - `tariffpeg.report.rows`
 - `tariffpeg.report.summary`
+- `tariffpeg.report.workload`
 
 ### cli
 
