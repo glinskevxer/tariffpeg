@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import StrEnum
 
 from tariffpeg.errors import Invalid
+from tariffpeg.model.outcome import SENDS_SOMEBODY_OUT, Disposition, heavier, rank
 from tariffpeg.sample.coverage import Coverage
 from tariffpeg.triage.corroborate import Finding
 
@@ -30,24 +30,6 @@ TAIL_SHARE = 0.5
 """What findings below the heaviest one contribute. One strong finding is worth
 more than four weak ones adding up to the same number, because four weak ones
 are four different things and none of them is worth a visit."""
-
-
-class Disposition(StrEnum):
-    """What happens to a licence, in order of seriousness."""
-
-    NO_ACTION = "no action"
-    DESK_ENQUIRY = "desk enquiry"
-    REINSPECTION = "re-inspection"
-    URGENT = "urgent re-inspection"
-
-
-ORDER = (
-    Disposition.NO_ACTION,
-    Disposition.DESK_ENQUIRY,
-    Disposition.REINSPECTION,
-    Disposition.URGENT,
-)
-"""The dispositions from lightest to heaviest."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +90,7 @@ class Decision:
     @property
     def needs_a_visit(self) -> bool:
         """Return whether an inspector has to go out."""
-        return self.disposition in (Disposition.REINSPECTION, Disposition.URGENT)
+        return self.disposition in SENDS_SOMEBODY_OUT
 
     def leading(self) -> Finding | None:
         """Return the finding the case file leads with."""
@@ -121,11 +103,6 @@ def combine(findings: Sequence[Finding]) -> float:
         return 0.0
     scores = sorted((finding.score for finding in findings), reverse=True)
     return round(scores[0] + TAIL_SHARE * sum(scores[1:]), 4)
-
-
-def heavier(one: Disposition, two: Disposition) -> Disposition:
-    """Return whichever of two dispositions is the more serious."""
-    return one if ORDER.index(one) >= ORDER.index(two) else two
 
 
 def decide(
@@ -147,7 +124,7 @@ def decide(
         disposition = heavier(disposition, access_band)
     capped = False
     short = coverage is not None and not coverage.satisfied
-    if short and ORDER.index(disposition) > ORDER.index(Disposition.DESK_ENQUIRY):
+    if short and rank(disposition) > rank(Disposition.DESK_ENQUIRY):
         assert coverage is not None
         capped = True
         reasons.append(

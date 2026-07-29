@@ -12,10 +12,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from tariffpeg.model.licence import Licence, LicenceStatus
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.rows import Column
 from tariffpeg.sample.coverage import Coverage
-from tariffpeg.triage.disposition import Decision, Disposition
+from tariffpeg.triage.disposition import Decision
 
 COLUMNS = (
     Column("figure", "figure"),

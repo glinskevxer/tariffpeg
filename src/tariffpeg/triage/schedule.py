@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 from tariffpeg.errors import Invalid
 from tariffpeg.model.licence import Licence
-from tariffpeg.triage.disposition import Disposition
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.workdays import add_working_days, is_working_day
 
 NOTICE_DAYS = 2

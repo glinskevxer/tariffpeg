@@ -21,13 +21,14 @@ from tariffpeg.claims.rules import RulePack
 from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel
 from tariffpeg.model.licence import Licence
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.period import StayMonth
 from tariffpeg.model.remediation import Remediation
 from tariffpeg.model.review import Review
 from tariffpeg.sample.coverage import Coverage
 from tariffpeg.triage.corroborate import Finding
 from tariffpeg.triage.corroborate import build as build_findings
-from tariffpeg.triage.disposition import Decision, Disposition, Thresholds, decide
+from tariffpeg.triage.disposition import Decision, Thresholds, decide
 from tariffpeg.triage.remediation import Applied, apply, notices_by_claim
 from tariffpeg.triage.schedule import Booking, Refusal
 from tariffpeg.triage.weight import weigh_all

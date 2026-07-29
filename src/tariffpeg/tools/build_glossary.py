@@ -14,11 +14,11 @@ from tariffpeg.claims.rules import Persistence, Polarity
 from tariffpeg.dedupe.syndication import Verdict
 from tariffpeg.model.channel import SyndicationClass
 from tariffpeg.model.licence import LicenceStatus
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.particulars import SPECS
 from tariffpeg.model.period import Season
 from tariffpeg.parse.drift import DriftState
 from tariffpeg.tools.document import render, run, table
-from tariffpeg.triage.disposition import Disposition
 
 NAME = "build_glossary"
 DOCUMENT = "glossary.md"

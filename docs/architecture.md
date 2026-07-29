@@ -42,6 +42,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.model.licence`
 - `tariffpeg.model.listing`
 - `tariffpeg.model.operator`
+- `tariffpeg.model.outcome`
 - `tariffpeg.model.particulars`
 - `tariffpeg.model.period`
 - `tariffpeg.model.profile`

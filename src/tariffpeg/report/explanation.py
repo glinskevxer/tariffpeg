@@ -13,10 +13,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.particulars import spec_for
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.triage.corroborate import Finding
-from tariffpeg.triage.disposition import ACCESS_CLAIMS, TAIL_SHARE, Disposition
+from tariffpeg.triage.disposition import ACCESS_CLAIMS, TAIL_SHARE
 from tariffpeg.triage.rooms import spreads
 
 

@@ -24,6 +24,7 @@ from tariffpeg.harvest.session import Session
 from tariffpeg.model.channel import Channel, FetchPolicy, SyndicationClass
 from tariffpeg.model.licence import Licence
 from tariffpeg.model.listing import Listing
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.period import StayMonth
 from tariffpeg.model.remediation import Remediation
 from tariffpeg.parse.profile import FieldRule, Profile
@@ -34,7 +35,6 @@ from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.migrations import migrate
 from tariffpeg.store.remediations import RemediationStore
-from tariffpeg.triage.disposition import Disposition
 
 NAME = "smoke"
 
