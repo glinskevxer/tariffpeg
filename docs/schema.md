@@ -265,3 +265,29 @@ Digest `7d9151922821c515`.
 | index | on | columns | unique |
 | --- | --- | --- | --- |
 | `profile_live` | `profile` | channel, retired_on | no |
+
+## 010 ledger
+
+Digest `6cdf60d3082aa9ec`.
+
+### `determination`
+
+| column | type | and |
+| --- | --- | --- |
+| `licence_serial` | INTEGER | NOT NULL REFERENCES licence(serial) |
+| `decided_year` | INTEGER | NOT NULL |
+| `decided_month` | INTEGER | NOT NULL |
+| `disposition` | TEXT | NOT NULL |
+| `score` | REAL | NOT NULL |
+| `access_score` | REAL | NOT NULL |
+| `capped` | INTEGER | NOT NULL DEFAULT 0 |
+| `pack_version` | INTEGER | NOT NULL |
+| `minuted_at` | TEXT | NOT NULL |
+| `officer` | TEXT | NOT NULL |
+
+### indexes
+
+| index | on | columns | unique |
+| --- | --- | --- | --- |
+| `determination_minuted` | `determination` | minuted_at | no |
+| `determination_disposition` | `determination` | disposition | no |

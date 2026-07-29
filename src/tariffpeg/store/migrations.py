@@ -274,6 +274,29 @@ MIGRATIONS: tuple[Migration, ...] = (
             "CREATE INDEX profile_live ON profile(channel, retired_on)",
         ),
     ),
+    Migration(
+        10,
+        "ledger",
+        (
+            """
+            CREATE TABLE determination (
+                licence_serial INTEGER NOT NULL REFERENCES licence(serial),
+                decided_year   INTEGER NOT NULL,
+                decided_month  INTEGER NOT NULL,
+                disposition    TEXT NOT NULL,
+                score          REAL NOT NULL,
+                access_score   REAL NOT NULL,
+                capped         INTEGER NOT NULL DEFAULT 0,
+                pack_version   INTEGER NOT NULL,
+                minuted_at     TEXT NOT NULL,
+                officer        TEXT NOT NULL,
+                PRIMARY KEY (licence_serial, decided_year, decided_month)
+            )
+            """,
+            "CREATE INDEX determination_minuted ON determination(minuted_at)",
+            "CREATE INDEX determination_disposition ON determination(disposition)",
+        ),
+    ),
 )
 """Every migration this package knows about, in the order they run."""
 

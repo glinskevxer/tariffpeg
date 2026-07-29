@@ -38,6 +38,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 - `tariffpeg.model.capture`
 - `tariffpeg.model.channel`
+- `tariffpeg.model.determination`
 - `tariffpeg.model.letter`
 - `tariffpeg.model.licence`
 - `tariffpeg.model.listing`
@@ -100,6 +101,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 - `tariffpeg.store.captures`
 - `tariffpeg.store.channels`
 - `tariffpeg.store.db`
+- `tariffpeg.store.determinations`
 - `tariffpeg.store.letters`
 - `tariffpeg.store.licences`
 - `tariffpeg.store.listings`
