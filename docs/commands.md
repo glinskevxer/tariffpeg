@@ -602,6 +602,14 @@ Print the arithmetic behind one decision, step by step.
 | `--at` |  | The month to decide at. |
 | `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
+### `tariffpeg triage ledger`
+
+List every minute the ledger holds about one licence.
+
+| what | and | why |
+| --- | --- | --- |
+| `ref` | argument |  |
+
 ### `tariffpeg triage list`
 
 List what the unit would do about every active licence.
@@ -619,6 +627,16 @@ Print the figures broken down by where the premises are.
 | what | and | why |
 | --- | --- | --- |
 | `--at` |  | The month to decide at. |
+
+### `tariffpeg triage minute`
+
+Write a month's decisions into the ledger.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to minute. |
+| `--officer` | required | Who is taking the minute. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg triage return`
 

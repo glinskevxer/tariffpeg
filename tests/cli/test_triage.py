@@ -6,9 +6,12 @@ import datetime as dt
 from pathlib import Path
 
 from tariffpeg.cli.context import Context
-from tariffpeg.cli.triage import diaries_of, visit_row
+from tariffpeg.cli.triage import diaries_of, minute_row, visit_row
+from tariffpeg.ids import format_licence_ref
+from tariffpeg.model.determination import Determination
+from tariffpeg.model.outcome import Disposition
+from tariffpeg.model.period import StayMonth
 from tariffpeg.settings import DEFAULTS
-from tariffpeg.triage.disposition import Disposition
 from tariffpeg.triage.schedule import Booking
 from tests.cli.conftest import Run
 from tests.cli.harvest_setup import REF, stock, write_bundle, write_profiles
@@ -181,3 +184,62 @@ def test_a_booked_visit_prints_whether_it_made_its_target() -> None:
     booking = Booking(4021, "Trewin", dt.date(2025, 9, 18), Disposition.URGENT)
     assert visit_row(booking, frozenset())["late"] is False
     assert visit_row(booking, frozenset({4021}))["late"] is True
+
+
+def test_a_month_is_minuted_once_and_the_second_run_says_so(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    first = run("triage", "minute", "--at", "2025-09", "--officer", "R Bosustow")
+    assert first.exit_code == 0
+    assert "R Bosustow" in first.output
+    again = run("triage", "minute", "--at", "2025-09", "--officer", "R Bosustow")
+    assert "already minuted for every licence" in again.output
+
+
+def test_a_minute_cannot_be_taken_without_saying_who_took_it(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "minute", "--at", "2025-09")
+    assert result.exit_code == 2
+
+
+def test_the_ledger_is_empty_until_a_month_has_been_minuted(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "ledger", REF)
+    assert result.exit_code == 0
+    assert "nothing has been minuted" in result.output
+
+
+def test_the_ledger_says_how_each_minute_moved_against_the_one_before(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    run("triage", "minute", "--at", "2025-08", "--officer", "R Bosustow")
+    run("triage", "minute", "--at", "2025-09", "--officer", "R Bosustow")
+    result = run("triage", "ledger", REF)
+    assert result.exit_code == 0
+    assert "held" in result.output
+
+
+def test_the_ledger_of_a_licence_nobody_has_heard_of_is_refused(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "ledger", format_licence_ref(9999))
+    assert result.exit_code == 3
+
+
+def test_a_minute_prints_the_pack_it_was_taken_under() -> None:
+    row = minute_row(
+        Determination(
+            licence_serial=4021,
+            decided_at=StayMonth(2025, 9),
+            disposition=Disposition.DESK_ENQUIRY,
+            score=4.512,
+            access_score=0.0,
+            capped=False,
+            pack_version=2,
+            minuted_at=dt.datetime(2025, 10, 2, 9, 30, tzinfo=dt.UTC),
+            officer="R Bosustow",
+        ),
+        "escalated",
+    )
+    assert row["pack"] == 2
+    assert row["score"] == 4.51
+    assert row["moved"] == "escalated"

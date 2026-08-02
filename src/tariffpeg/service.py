@@ -14,6 +14,7 @@ from pathlib import Path
 
 from tariffpeg.claims.pack import PACK
 from tariffpeg.claims.rules import RulePack
+from tariffpeg.clock import Clock
 from tariffpeg.dedupe.syndication import DEFAULT_RULES, SyndicationRules
 from tariffpeg.errors import Invalid
 from tariffpeg.fetch.bundle import INDEX
@@ -23,6 +24,7 @@ from tariffpeg.harvest.plan import Plan
 from tariffpeg.harvest.plan import build as build_plan
 from tariffpeg.model.capture import Capture
 from tariffpeg.model.channel import Channel
+from tariffpeg.model.determination import Determination
 from tariffpeg.model.licence import Licence, LicenceStatus
 from tariffpeg.model.listing import Listing
 from tariffpeg.model.period import StayMonth
@@ -37,6 +39,7 @@ from tariffpeg.sample.regime import PUBLISHED, Regime
 from tariffpeg.store.captures import CaptureStore
 from tariffpeg.store.channels import ChannelStore
 from tariffpeg.store.db import Database
+from tariffpeg.store.determinations import DeterminationStore
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.remediations import RemediationStore
@@ -301,3 +304,50 @@ def budget(db: Database, plan: Plan, on: dt.date) -> Budget:
 def affordable(db: Database, plan: Plan, on: dt.date) -> Plan:
     """Return the plan cut down to what the channels will allow today."""
     return trim(plan, budget(db, plan, on))
+
+
+def minute(
+    db: Database,
+    at: StayMonth,
+    officer: str,
+    clock: Clock,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> tuple[Determination, ...]:
+    """Write a month's decisions into the ledger and return what was written.
+
+    A licence already minuted for the month is left as it was. Re-running the
+    minute after a late harvest is meant to pick up the licences that were not
+    on the register the first time, not to rewrite what the operator was told.
+    """
+    ledger = DeterminationStore(db)
+    taken = clock.now()
+    written: list[Determination] = []
+    for decision in decisions(db, at, pack, regime, rules):
+        if ledger.exists(decision.licence_serial, at):
+            continue
+        record = Determination(
+            licence_serial=decision.licence_serial,
+            decided_at=at,
+            disposition=decision.disposition,
+            score=decision.score,
+            access_score=decision.access_score,
+            capped=decision.capped,
+            pack_version=pack.version,
+            minuted_at=taken,
+            officer=officer,
+        )
+        ledger.record(record)
+        written.append(record)
+    return tuple(written)
+
+
+def already_minuted(db: Database, at: StayMonth) -> tuple[int, ...]:
+    """Return the licences the ledger already holds a minute for in a month."""
+    return tuple(item.licence_serial for item in DeterminationStore(db).at_month(at))
+
+
+def ledger_for(db: Database, serial: int) -> tuple[Determination, ...]:
+    """Return every minute the ledger holds about one licence."""
+    return DeterminationStore(db).for_licence(serial)

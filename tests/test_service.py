@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tariffpeg import service
+from tariffpeg.clock import FixedClock
 from tariffpeg.model.licence import LicenceStatus
 from tariffpeg.model.listing import Listing
 from tariffpeg.model.period import StayMonth
@@ -25,6 +26,7 @@ from tests.store.conftest import DIGEST, FETCHED, a_capture, a_channel, a_licenc
 from tests.triage.conftest import NO_LIFT, NO_LIFT_AGAIN, a_review
 
 AT = StayMonth(2025, 9)
+MINUTED = dt.datetime(2025, 10, 2, 9, 30, tzinfo=dt.UTC)
 ON = dt.date(2025, 9, 15)
 
 
@@ -265,3 +267,31 @@ def test_a_plan_cut_to_the_budget_asks_for_no_more_than_the_day_allows(
     plan = service.plan(wired, AT, day)
     cut = service.affordable(wired, plan, day)
     assert cut.total_pages <= plan.total_pages
+
+
+def test_minuting_a_month_writes_one_record_for_each_active_licence(
+    wired: Database,
+) -> None:
+    written = service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    assert [item.licence_serial for item in written] == [4021]
+    assert written[0].officer == "R Bosustow"
+    assert written[0].minuted_at == MINUTED
+
+
+def test_minuting_the_same_month_again_leaves_what_was_written_alone(
+    wired: Database,
+) -> None:
+    service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    again = service.minute(wired, AT, "M Nancarrow", FixedClock(MINUTED))
+    assert again == ()
+    assert service.already_minuted(wired, AT) == (4021,)
+
+
+def test_the_ledger_reads_back_what_was_minuted_about_a_licence(wired: Database) -> None:
+    service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    held = service.ledger_for(wired, 4021)
+    assert [item.decided_at for item in held] == [AT]
+
+
+def test_a_licence_nobody_minuted_has_an_empty_ledger(wired: Database) -> None:
+    assert service.ledger_for(wired, 4021) == ()

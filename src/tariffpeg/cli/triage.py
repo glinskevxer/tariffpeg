@@ -9,6 +9,7 @@ import click
 from tariffpeg import service
 from tariffpeg.cli.context import Context, pack_asked_for, pack_option, refusals
 from tariffpeg.cli.harvest import month_or_now
+from tariffpeg.model.determination import Determination, movement, unexplained
 from tariffpeg.report.explanation import explain
 from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
 from tariffpeg.report.locality import unsampled
@@ -32,6 +33,15 @@ FINDING_COLUMNS = (
     Column("score", "score", numeric=True),
     Column("voices", "voices", numeric=True),
     Column("channels", "channels"),
+)
+MINUTE_COLUMNS = (
+    Column("licence", "licence", numeric=True),
+    Column("month", "month"),
+    Column("disposition", "disposition"),
+    Column("score", "score", numeric=True),
+    Column("pack", "pack", numeric=True),
+    Column("officer", "minuted by"),
+    Column("moved", "against the last one"),
 )
 VISIT_COLUMNS = (
     Column("licence", "licence", numeric=True),
@@ -223,3 +233,61 @@ def locality_command(ctx: Context, at: str) -> None:
     nothing = unsampled(places)
     if nothing:
         ctx.say("", "nothing is properly sampled in: " + ", ".join(nothing))
+
+
+def minute_row(item: Determination, moved: str) -> dict[str, object]:
+    """Return the row one minute prints as."""
+    return {
+        "licence": item.licence_serial,
+        "month": str(item.decided_at),
+        "disposition": str(item.disposition),
+        "score": round(item.score, 2),
+        "pack": item.pack_version,
+        "officer": item.officer,
+        "moved": moved,
+    }
+
+
+@triage_group.command(name="minute")
+@click.option("--at", "at", default="", help="The month to minute.")
+@click.option("--officer", required=True, help="Who is taking the minute.")
+@pack_option
+@click.pass_obj
+def minute_command(ctx: Context, at: str, officer: str, pack_version: int) -> None:
+    """Write a month's decisions into the ledger."""
+    store = ctx.store()
+    with refusals():
+        month = month_or_now(at, ctx)
+        before = service.already_minuted(store, month)
+        written = service.minute(store, month, officer, ctx.clock, pack_asked_for(pack_version))
+    if not written:
+        ctx.say(f"{month} was already minuted for every licence on the register")
+        return
+    ctx.emit([minute_row(item, "") for item in written], MINUTE_COLUMNS)
+    if before:
+        ctx.say("", f"{len(before)} licences were already minuted and were left alone")
+
+
+@triage_group.command(name="ledger")
+@click.argument("ref")
+@click.pass_obj
+def ledger_command(ctx: Context, ref: str) -> None:
+    """List every minute the ledger holds about one licence."""
+    with refusals():
+        licence = LicenceStore(ctx.store()).by_ref(ref)
+        held = service.ledger_for(ctx.store(), licence.serial)
+    if not held:
+        ctx.say(f"nothing has been minuted about {licence.ref}")
+        return
+    rows: list[dict[str, object]] = []
+    for index, item in enumerate(held):
+        moved = movement(held[index - 1], item) if index else ""
+        rows.append(minute_row(item, moved))
+    ctx.emit(rows, MINUTE_COLUMNS)
+    worrying = [
+        str(item.decided_at)
+        for index, item in enumerate(held)
+        if index and unexplained(held[index - 1], item)
+    ]
+    if worrying:
+        ctx.say("", "stepped back under the same pack in: " + ", ".join(worrying))
