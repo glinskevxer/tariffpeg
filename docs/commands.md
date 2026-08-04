@@ -638,6 +638,15 @@ Write a month's decisions into the ledger.
 | `--officer` | required | Who is taking the minute. |
 | `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
+### `tariffpeg triage reconcile`
+
+Set the ledger against what the evidence says today.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to read the evidence at. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
+
 ### `tariffpeg triage return`
 
 Print the return the unit files for a month.

@@ -31,6 +31,7 @@ from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
 from tariffpeg.report.locality import Place, by_locality
+from tariffpeg.report.movement import Reconciliation, reconcile
 from tariffpeg.report.summary import Return, compile_return
 from tariffpeg.report.workload import Spread, spread
 from tariffpeg.sample.calibration import TOLERANCE, Drift, look_back
@@ -351,3 +352,19 @@ def already_minuted(db: Database, at: StayMonth) -> tuple[int, ...]:
 def ledger_for(db: Database, serial: int) -> tuple[Determination, ...]:
     """Return every minute the ledger holds about one licence."""
     return DeterminationStore(db).for_licence(serial)
+
+
+def reconciliation(
+    db: Database,
+    at: StayMonth,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Reconciliation:
+    """Return the ledger set against the reading the evidence gives now."""
+    ledger = DeterminationStore(db)
+    live = decisions(db, at, pack, regime, rules)
+    minutes = {
+        decision.licence_serial: ledger.latest_for(decision.licence_serial) for decision in live
+    }
+    return reconcile(minutes, live, pack.version)

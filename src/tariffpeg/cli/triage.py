@@ -13,6 +13,7 @@ from tariffpeg.model.determination import Determination, movement, unexplained
 from tariffpeg.report.explanation import explain
 from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
 from tariffpeg.report.locality import unsampled
+from tariffpeg.report.movement import COLUMNS as MOVEMENT_COLUMNS
 from tariffpeg.report.rows import Column
 from tariffpeg.report.summary import COLUMNS as RETURN_COLUMNS
 from tariffpeg.report.workload import COLUMNS as WORKLOAD_COLUMNS
@@ -291,3 +292,32 @@ def ledger_command(ctx: Context, ref: str) -> None:
     ]
     if worrying:
         ctx.say("", "stepped back under the same pack in: " + ", ".join(worrying))
+
+
+@triage_group.command(name="reconcile")
+@click.option("--at", "at", default="", help="The month to read the evidence at.")
+@pack_option
+@click.pass_obj
+def reconcile_command(ctx: Context, at: str, pack_version: int) -> None:
+    """Set the ledger against what the evidence says today."""
+    with refusals():
+        found = service.reconciliation(
+            ctx.store(), month_or_now(at, ctx), pack_asked_for(pack_version)
+        )
+    if not found.movements:
+        ctx.say("no active licence is on the register")
+        return
+    ctx.emit(found.rows(), MOVEMENT_COLUMNS)
+    never = found.unminuted()
+    if never:
+        ctx.say("", f"{len(never)} licences have never been minuted")
+    if found.settled():
+        ctx.say("", "every minuted licence still reads the way it was minuted")
+        return
+    wanting = found.wanting_a_letter()
+    if wanting:
+        ctx.say(
+            "",
+            "the operator was told something that no longer holds at: "
+            + ", ".join(str(serial) for serial in wanting),
+        )

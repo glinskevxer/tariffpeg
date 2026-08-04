@@ -295,3 +295,16 @@ def test_the_ledger_reads_back_what_was_minuted_about_a_licence(wired: Database)
 
 def test_a_licence_nobody_minuted_has_an_empty_ledger(wired: Database) -> None:
     assert service.ledger_for(wired, 4021) == ()
+
+
+def test_a_register_nobody_has_minuted_reconciles_as_unminuted(wired: Database) -> None:
+    found = service.reconciliation(wired, AT)
+    assert found.unminuted() == (4021,)
+    assert found.settled()
+
+
+def test_a_minuted_register_reconciles_as_settled(wired: Database) -> None:
+    service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    found = service.reconciliation(wired, AT)
+    assert found.unminuted() == ()
+    assert found.settled()

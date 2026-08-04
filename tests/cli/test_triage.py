@@ -243,3 +243,20 @@ def test_a_minute_prints_the_pack_it_was_taken_under() -> None:
     assert row["pack"] == 2
     assert row["score"] == 4.51
     assert row["moved"] == "escalated"
+
+
+def test_a_register_nobody_minuted_reconciles_as_never_minuted(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "reconcile", "--at", "2025-09")
+    assert result.exit_code == 0
+    assert "never been minuted" in result.output
+
+
+def test_a_minuted_register_reconciles_as_still_reading_the_same_way(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    run("triage", "minute", "--at", "2025-09", "--officer", "R Bosustow")
+    result = run("triage", "reconcile", "--at", "2025-09")
+    assert result.exit_code == 0
+    assert "still reads the way it was minuted" in result.output
