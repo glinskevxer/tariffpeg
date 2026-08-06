@@ -223,6 +223,17 @@ Read the channels and put what comes back into the store.
 
 Look after what the unit sent and what came back.
 
+### `tariffpeg letter draft`
+
+Print the letter this licence's case file produces, without sending it.
+
+| what | and | why |
+| --- | --- | --- |
+| `licence_ref` | argument |  |
+| `--at` |  | The month to read the evidence at. |
+| `--on` |  | The day the letter would go out. |
+| `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
+
 ### `tariffpeg letter list`
 
 List what has gone out.

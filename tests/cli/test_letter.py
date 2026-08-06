@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from tariffpeg.cli.letter import digest_of
+from tariffpeg.ids import format_licence_ref
 from tests.cli.conftest import Run
+from tests.cli.harvest_setup import stock, write_bundle, write_profiles
 from tests.cli.test_channel import ADD_LICENCE, REF
 from tests.cli.test_operator import ADD_OPERATOR
+
+
+def harvested(run: Run, tmp_path: Path) -> None:
+    stock(run)
+    run(
+        "harvest",
+        "run",
+        "--profiles",
+        str(write_profiles(tmp_path)),
+        "--bundle",
+        str(write_bundle(tmp_path)),
+        "--on",
+        "2025-09-15",
+    )
+
 
 SEND = (
     "letter",
@@ -129,3 +148,25 @@ def test_a_kind_of_letter_nobody_recognises_is_refused(migrated: Run) -> None:
     stocked(migrated)
     result = migrated(*SEND[:6], "--kind", "postcard", *SEND[8:])
     assert result.exit_code != 0
+
+
+def test_a_letter_is_drafted_from_the_case_file_without_being_sent(
+    run: Run, tmp_path: Path
+) -> None:
+    harvested(run, tmp_path)
+    result = run("letter", "draft", REF, "--at", "2025-08", "--on", "2025-10-02")
+    assert result.exit_code == 0
+    assert "For the attention of" in result.output
+    assert "digest sha256:" in result.output
+
+
+def test_a_licence_with_nothing_against_it_drafts_no_letter(run: Run, tmp_path: Path) -> None:
+    stock(run)
+    result = run("letter", "draft", REF, "--at", "2025-09", "--on", "2025-10-02")
+    assert result.exit_code == 5
+
+
+def test_drafting_for_a_licence_nobody_has_heard_of_is_refused(run: Run) -> None:
+    stock(run)
+    result = run("letter", "draft", format_licence_ref(9999))
+    assert result.exit_code == 3

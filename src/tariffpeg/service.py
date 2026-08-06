@@ -32,6 +32,8 @@ from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
 from tariffpeg.report.locality import Place, by_locality
 from tariffpeg.report.movement import Reconciliation, reconcile
+from tariffpeg.report.notice import Draft
+from tariffpeg.report.notice import draft as draft_letter
 from tariffpeg.report.summary import Return, compile_return
 from tariffpeg.report.workload import Spread, spread
 from tariffpeg.sample.calibration import TOLERANCE, Drift, look_back
@@ -368,3 +370,20 @@ def reconciliation(
         decision.licence_serial: ledger.latest_for(decision.licence_serial) for decision in live
     }
     return reconcile(minutes, live, pack.version)
+
+
+def letter_draft(
+    db: Database,
+    licence: Licence,
+    at: StayMonth,
+    sent_on: dt.date,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Draft:
+    """Return the letter one licence's case file would produce."""
+    return draft_letter(
+        case_for(db, licence, at, pack, regime, rules),
+        DeterminationStore(db).latest_for(licence.serial),
+        sent_on,
+    )

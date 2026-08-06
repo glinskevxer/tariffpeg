@@ -7,7 +7,9 @@ import hashlib
 
 import click
 
-from tariffpeg.cli.context import Context, refusals
+from tariffpeg import service
+from tariffpeg.cli.context import Context, pack_asked_for, pack_option, refusals
+from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.model.letter import Letter, Sent
 from tariffpeg.report.rows import Column
 from tariffpeg.store.letters import LetterStore
@@ -158,3 +160,32 @@ def overdue_command(ctx: Context, day: dt.datetime | None) -> None:
 def _everything(store: LetterStore) -> tuple[Letter, ...]:
     rows = store.db.conn.execute("SELECT reference FROM letter ORDER BY sent_on, reference")
     return tuple(store.get(str(row["reference"])) for row in rows.fetchall())
+
+
+@letter_group.command(name="draft")
+@click.argument("licence_ref")
+@click.option("--at", "at", default="", help="The month to read the evidence at.")
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day the letter would go out.",
+)
+@pack_option
+@click.pass_obj
+def draft_command(
+    ctx: Context, licence_ref: str, at: str, on: dt.datetime | None, pack_version: int
+) -> None:
+    """Print the letter this licence's case file produces, without sending it."""
+    with refusals():
+        licence = LicenceStore(ctx.store()).by_ref(licence_ref)
+        drafted = service.letter_draft(
+            ctx.store(),
+            licence,
+            month_or_now(at, ctx),
+            on.date() if on else ctx.clock.now().date(),
+            pack_asked_for(pack_version),
+        )
+    ctx.say(*drafted.lines())
+    ctx.say("", f"this would go as a {drafted.kind}, digest {digest_of(drafted.text())[:23]}")

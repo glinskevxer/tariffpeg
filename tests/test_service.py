@@ -308,3 +308,12 @@ def test_a_minuted_register_reconciles_as_settled(wired: Database) -> None:
     found = service.reconciliation(wired, AT)
     assert found.unminuted() == ()
     assert found.settled()
+
+
+def test_a_letter_is_drafted_from_the_licence_and_the_month(wired: Database) -> None:
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    ReviewStore(wired).add(a_review("2", NO_LIFT_AGAIN), FETCHED)
+    licence = LicenceStore(wired).get(4021)
+    drafted = service.letter_draft(wired, licence, AT, dt.date(2025, 10, 2))
+    assert drafted.licence_ref == licence.ref
+    assert drafted.reply_by > dt.date(2025, 10, 2)
