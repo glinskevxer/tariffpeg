@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 import pytest
 
 from tariffpeg.errors import Invalid
 from tariffpeg.settings import DEFAULTS, Settings, describe, load, read_text
+
+HOLIDAY_FILE = """[tariffpeg]
+holidays = [2026-03-09]
+"""
 
 
 def test_the_defaults_stand_on_their_own() -> None:
@@ -140,3 +145,32 @@ def test_the_description_prints_a_list_as_a_line() -> None:
     rows = describe(DEFAULTS)
     listed = [row for row in rows if row["setting"] == "inspectors"]
     assert listed[0]["value"] == "Trewin, Angove"
+
+
+def test_the_holidays_read_back_as_days_the_authority_is_shut() -> None:
+    settings = DEFAULTS.with_values({"holidays": ["2026-03-09", "2026-12-28"]})
+    assert settings.holiday_days() == frozenset({dt.date(2026, 3, 9), dt.date(2026, 12, 28)})
+
+
+def test_a_unit_that_named_no_holidays_has_none() -> None:
+    assert DEFAULTS.holiday_days() == frozenset()
+
+
+def test_a_holiday_written_as_something_other_than_a_date_is_refused() -> None:
+    with pytest.raises(Invalid, match="written as a full date"):
+        DEFAULTS.with_values({"holidays": ["Feast of St Piran"]})
+
+
+def test_the_same_holiday_listed_twice_is_refused() -> None:
+    with pytest.raises(Invalid, match="listed once"):
+        DEFAULTS.with_values({"holidays": ["2026-03-09", "2026-03-09"]})
+
+
+def test_a_holiday_list_that_is_not_a_list_is_refused() -> None:
+    with pytest.raises(Invalid, match="written as a list"):
+        DEFAULTS.with_values({"holidays": "2026-03-09"})
+
+
+def test_a_holiday_read_out_of_toml_as_a_bare_date_is_kept() -> None:
+    settings = read_text(HOLIDAY_FILE)
+    assert settings.holiday_days() == frozenset({dt.date(2026, 3, 9)})

@@ -26,6 +26,10 @@ def harvested(run: Run, tmp_path: Path) -> None:
     )
 
 
+SHUT = """[tariffpeg]
+holidays = [2026-06-03, 2026-06-04]
+"""
+
 SEND = (
     "letter",
     "send",
@@ -170,3 +174,26 @@ def test_drafting_for_a_licence_nobody_has_heard_of_is_refused(run: Run) -> None
     stock(run)
     result = run("letter", "draft", format_licence_ref(9999))
     assert result.exit_code == 3
+
+
+def test_a_reply_deadline_skips_the_days_the_authority_is_shut(
+    migrated: Run, tmp_path: Path
+) -> None:
+    config = tmp_path / "tariffpeg.toml"
+    config.write_text(SHUT, encoding="utf-8")
+    stocked(migrated)
+    result = migrated(*SEND, extra=["--config", str(config)])
+    assert result.exit_code == 0
+    assert "reply due 2026-06-23" in result.output
+
+
+def test_the_register_prints_the_deadline_the_holidays_pushed_out(
+    migrated: Run, tmp_path: Path
+) -> None:
+    config = tmp_path / "tariffpeg.toml"
+    config.write_text(SHUT, encoding="utf-8")
+    stocked(migrated)
+    migrated(*SEND)
+    listed = migrated("letter", "list", extra=["--config", str(config)])
+    assert "2026-06-23" in listed.output
+    assert "2026-06-19" not in listed.output

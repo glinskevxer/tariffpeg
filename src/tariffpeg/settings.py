@@ -8,6 +8,7 @@ falls back to a default without saying so is the wrong failure for both.
 
 from __future__ import annotations
 
+import datetime as dt
 import tomllib
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields, replace
@@ -33,6 +34,7 @@ class Settings:
     minimum_channels: int = 2
     weekly_capacity: int = 4
     inspectors: tuple[str, ...] = ("Trewin", "Angove")
+    holidays: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if "@" not in self.contact:
@@ -58,6 +60,23 @@ class Settings:
             raise Invalid("inspectors", 0, "there has to be somebody to send")
         if len(set(self.inspectors)) != len(self.inspectors):
             raise Invalid("inspectors", len(self.inspectors), "an inspector is named once")
+        for written in self.holidays:
+            try:
+                dt.date.fromisoformat(written)
+            except ValueError:
+                raise Invalid("holidays", written, "a holiday is written as a full date") from None
+        if len(set(self.holidays)) != len(self.holidays):
+            raise Invalid("holidays", len(self.holidays), "a holiday is listed once")
+
+    def holiday_days(self) -> frozenset[dt.date]:
+        """Return the days nobody travels and no reply clock runs.
+
+        These are not weekends. Weekends are arithmetic and this package knows
+        about them already. These are the days the authority is shut, which are
+        local, move every year, and are the reason a reply deadline computed
+        from a national calendar is wrong here.
+        """
+        return frozenset(dt.date.fromisoformat(written) for written in self.holidays)
 
     @property
     def user_agent(self) -> str:
@@ -71,11 +90,15 @@ class Settings:
         if unknown:
             raise Invalid("settings", unknown[0], "the settings file has no such key")
         typed = dict(values)
-        if "inspectors" in typed:
-            listed = typed["inspectors"]
+        for key in ("inspectors", "holidays"):
+            if key not in typed:
+                continue
+            listed = typed[key]
             if not isinstance(listed, list | tuple):
-                raise Invalid("inspectors", listed, "the inspectors are written as a list")
-            typed["inspectors"] = tuple(str(name) for name in listed)
+                raise Invalid(key, listed, f"the {key} are written as a list")
+            typed[key] = tuple(
+                item.isoformat() if isinstance(item, dt.date) else str(item) for item in listed
+            )
         return replace(self, **typed)  # type: ignore[arg-type]
 
     def as_dict(self) -> dict[str, object]:

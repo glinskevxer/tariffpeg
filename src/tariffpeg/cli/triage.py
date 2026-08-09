@@ -152,7 +152,8 @@ def schedule_command(ctx: Context, at: str, on: dt.datetime | None, pack_version
             month_or_now(at, ctx),
             on.date() if on else ctx.clock.now().date(),
             diaries_of(ctx),
-            pack=pack_asked_for(pack_version),
+            ctx.settings.holiday_days(),
+            pack_asked_for(pack_version),
         )
     if not booked.bookings:
         ctx.say("nothing needs a visit")
@@ -181,7 +182,8 @@ def workload_command(ctx: Context, at: str, on: dt.datetime | None, pack_version
             month_or_now(at, ctx),
             on.date() if on else ctx.clock.now().date(),
             diaries_of(ctx),
-            pack=pack_asked_for(pack_version),
+            ctx.settings.holiday_days(),
+            pack_asked_for(pack_version),
         )
     if not found.span:
         ctx.say("no visit was booked, so there is nothing to spread")

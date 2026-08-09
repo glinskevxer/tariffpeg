@@ -32,14 +32,14 @@ def digest_of(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def as_row(letter: Letter) -> dict[str, object]:
+def as_row(letter: Letter, holidays: frozenset[dt.date] = frozenset()) -> dict[str, object]:
     """Return the row the register prints for a letter."""
     return {
         "reference": letter.reference,
         "licence": letter.licence_serial,
         "kind": str(letter.kind),
         "sent": letter.sent_on.isoformat(),
-        "due": letter.due_on().isoformat(),
+        "due": letter.due_on(holidays).isoformat(),
         "replied": letter.replied_on.isoformat() if letter.replied_on else "",
         "subject": letter.subject,
     }
@@ -92,7 +92,10 @@ def send_command(
             body_digest=digest_of(body),
         )
         LetterStore(ctx.store()).add(letter)
-    ctx.say(f"{letter.reference} sent to {operator.letter_to()}, reply due {letter.due_on()}")
+    ctx.say(
+        f"{letter.reference} sent to {operator.letter_to()},"
+        f" reply due {letter.due_on(ctx.settings.holiday_days())}"
+    )
 
 
 @letter_group.command(name="reply")
@@ -110,7 +113,7 @@ def reply_command(ctx: Context, reference: str, day: dt.datetime | None) -> None
     with refusals():
         when = day.date() if day else ctx.clock.now().date()
         answered = LetterStore(ctx.store()).record_reply(reference, when)
-    late = " and it was late" if answered.answered_late() else ""
+    late = " and it was late" if answered.answered_late(ctx.settings.holiday_days()) else ""
     ctx.say(f"{reference} answered on {when}{late}")
 
 
@@ -134,7 +137,7 @@ def list_command(ctx: Context, ref: str, operator_ref: str, unanswered: bool) ->
     if not held:
         ctx.say("nothing has gone out")
         return
-    ctx.emit([as_row(letter) for letter in held], COLUMNS)
+    ctx.emit([as_row(letter, ctx.settings.holiday_days()) for letter in held], COLUMNS)
 
 
 @letter_group.command(name="overdue")
@@ -150,11 +153,11 @@ def overdue_command(ctx: Context, day: dt.datetime | None) -> None:
     """List the letters nobody has answered in time."""
     with refusals():
         when = day.date() if day else ctx.clock.now().date()
-        held = LetterStore(ctx.store()).overdue_on(when)
+        held = LetterStore(ctx.store()).overdue_on(when, ctx.settings.holiday_days())
     if not held:
         ctx.say(f"every letter has been answered in time as at {when}")
         return
-    ctx.emit([as_row(letter) for letter in held], COLUMNS)
+    ctx.emit([as_row(letter, ctx.settings.holiday_days()) for letter in held], COLUMNS)
 
 
 def _everything(store: LetterStore) -> tuple[Letter, ...]:
