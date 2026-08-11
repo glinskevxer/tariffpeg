@@ -7,9 +7,14 @@ import datetime as dt
 import pytest
 
 from tariffpeg import service
+from tariffpeg.claims.pack import PACK
 from tariffpeg.clock import FixedClock
 from tariffpeg.fetch.replay import ReplayTransport
-from tariffpeg.harvest.plan import Plan
+from tariffpeg.harvest.budget import Budget
+from tariffpeg.harvest.plan import Plan, Stop
+from tariffpeg.model.determination import Determination
+from tariffpeg.model.outcome import Disposition
+from tariffpeg.report.movement import Movement, Reconciliation
 from tariffpeg.store.db import Database
 from tariffpeg.store.migrations import migrate
 from tariffpeg.store.reviews import ReviewStore
@@ -111,3 +116,81 @@ def test_a_broken_pipeline_exits_one(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(smoke, "run_once", refuse)
     monkeypatch.setattr("sys.argv", ["smoke"])
     assert smoke.main() == 1
+
+
+def test_the_run_minutes_the_month_and_drafts_the_letter(ready: Database) -> None:
+    try:
+        lines = smoke.run_once(ready)
+    finally:
+        ready.close()
+    assert "minuted as desk enquiry by R Bosustow" in lines
+    assert any(line.startswith("letter drafted as a desk enquiry") for line in lines)
+
+
+def test_the_run_sees_the_evidence_move_away_from_the_minute(ready: Database) -> None:
+    try:
+        lines = smoke.run_once(ready)
+    finally:
+        ready.close()
+    assert "the ledger reads stepped back against the evidence now" in lines
+
+
+def test_the_run_costs_a_further_harvest_against_the_channels(ready: Database) -> None:
+    try:
+        lines = smoke.run_once(ready)
+    finally:
+        ready.close()
+    assert any("a further harvest would ask for" in line for line in lines)
+
+
+def test_the_run_notices_a_month_that_minutes_itself_twice(
+    ready: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[int] = []
+
+    def always_writes(*args: object, **kwargs: object) -> tuple[object, ...]:
+        calls.append(1)
+        return ("a minute",)
+
+    monkeypatch.setattr(service, "minute", always_writes)
+    try:
+        with pytest.raises(AssertionError, match="second minute"):
+            smoke.run_once(ready)
+    finally:
+        ready.close()
+
+
+def test_the_run_notices_a_reconciliation_that_will_not_settle(
+    ready: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    taken = Determination(
+        licence_serial=4021,
+        decided_at=smoke.AT,
+        disposition=Disposition.DESK_ENQUIRY,
+        score=3.5,
+        access_score=0.0,
+        capped=False,
+        pack_version=PACK.version,
+        minuted_at=smoke.STARTED,
+        officer="R Bosustow",
+    )
+    unsettled = Reconciliation((Movement(4021, taken, Disposition.URGENT, PACK.version),))
+    monkeypatch.setattr(service, "reconciliation", lambda *a, **k: unsettled)
+    try:
+        with pytest.raises(AssertionError, match="did not reconcile"):
+            smoke.run_once(ready)
+    finally:
+        ready.close()
+
+
+def test_the_run_notices_a_budget_that_costs_a_plan_at_nothing(
+    ready: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stop = Stop(4021, "seaboard", "https://seaboard.example/p", 1, 4, "short")
+    monkeypatch.setattr(service, "plan", lambda *a, **k: Plan((stop,)))
+    monkeypatch.setattr(service, "budget", lambda *a, **k: Budget())
+    try:
+        with pytest.raises(AssertionError, match="costed nothing"):
+            smoke.count_the_cost(ready)
+    finally:
+        ready.close()

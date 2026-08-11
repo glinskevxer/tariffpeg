@@ -3,7 +3,12 @@
 This is the test that would have caught every release problem this package has
 had, because every one of them was a seam between two layers that each had their
 own tests. It builds a store, registers a channel and a licence, replays two
-pages of reviews, and reads the case file that comes out the other end.
+pages of reviews, reads the case file that comes out the other end, minutes the
+decision, drafts the letter it produces, and books the visit.
+
+The last four steps are the ones added after the first release. Each of them
+reads something the step before it wrote, which is the only arrangement that
+catches a seam. A smoke run whose steps are independent is a slow unit test.
 
 Nothing here touches the network and nothing is left behind.
 """
@@ -35,6 +40,7 @@ from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.migrations import migrate
 from tariffpeg.store.remediations import RemediationStore
+from tariffpeg.triage.schedule import Diary
 
 NAME = "smoke"
 
@@ -175,6 +181,7 @@ def run_once(db: Database) -> list[str]:
     for quotation in case.quotations:
         if not quotation.capture_digest.startswith("sha256:") or quotation.fetched_at is None:
             raise AssertionError(f"{quotation.review_key} cannot be answered for")
+    minuted = minute_and_write(db, licence)
     RemediationStore(db).add(
         Remediation(4021, "lift", "RN-1", dt.date(2026, 5, 4), StayMonth(2026, 1)).accept("seen")
     )
@@ -188,7 +195,63 @@ def run_once(db: Database) -> list[str]:
         f"coverage {case.coverage.opinions} opinions, {case.coverage.total_shortfall} short",
         f"disposition {case.decision.disposition} at {case.decision.score:.2f}",
         f"after the notice {cleared.decision.disposition} at {cleared.decision.score:.2f}",
+        *minuted,
+        *after_the_notice(db),
+        *count_the_cost(db),
     ]
+
+
+def minute_and_write(db: Database, licence: Licence) -> list[str]:
+    """Minute the month, draft the letter it produces, and book the visit."""
+    written = service.minute(db, AT, "R Bosustow", FixedClock(STARTED), PACK)
+    if len(written) != 1:
+        raise AssertionError(f"{len(written)} licences minuted, wanted one")
+    if service.minute(db, AT, "R Bosustow", FixedClock(STARTED), PACK):
+        raise AssertionError("the second minute of the same month wrote something")
+    settled = service.reconciliation(db, AT, PACK)
+    if not settled.settled():
+        raise AssertionError("a month minuted from the same evidence did not reconcile")
+    letter = service.letter_draft(db, licence, AT, STARTED.date(), PACK)
+    if licence.trading_name not in letter.subject:
+        raise AssertionError("the letter is not about the premises it was drafted from")
+    if f"pack {PACK.version}" not in " ".join(letter.paragraphs):
+        raise AssertionError("the letter does not cite the pack it was read under")
+    booked = service.visits(db, AT, STARTED.date(), [Diary("Trewin")], frozenset(), PACK)
+    return [
+        f"minuted as {written[0].disposition} by {written[0].officer}",
+        f"letter drafted as a {letter.kind}, reply by {letter.reply_by}",
+        f"{booked.booked} visits booked, {len(booked.refusals)} refused",
+    ]
+
+
+def after_the_notice(db: Database) -> list[str]:
+    """Check that the ledger notices the evidence going away.
+
+    The minute was taken before the notice was accepted, so the live reading is
+    now lighter than what the operator was told. That is exactly the case the
+    reconciliation exists for, and under the same pack it reads as unexplained.
+    """
+    found = service.reconciliation(db, AT, PACK)
+    if found.settled():
+        raise AssertionError("an accepted notice did not move the reading off the minute")
+    moved = found.moved()
+    if len(moved) != 1 or not moved[0].unexplained:
+        raise AssertionError(f"the step back was not reported as unexplained: {moved}")
+    if found.wanting_a_letter():
+        raise AssertionError("a step back asked for a letter")
+    return [f"the ledger reads {moved[0].moved} against the evidence now"]
+
+
+def count_the_cost(db: Database) -> list[str]:
+    """Work out what another harvest would cost the channels today."""
+    plan = service.plan(db, AT, STARTED.date())
+    costed = service.budget(db, plan, STARTED.date())
+    if plan.total_pages and not costed.allowances:
+        raise AssertionError("a plan that asks for pages costed nothing")
+    trimmed = service.affordable(db, plan, STARTED.date())
+    if trimmed.total_pages > plan.total_pages:
+        raise AssertionError("trimming a plan to the budget made it bigger")
+    return [f"a further harvest would ask for {costed.wanted} pages, {costed.granted} of them fit"]
 
 
 def main() -> int:
