@@ -8,7 +8,7 @@ import pytest
 
 from tariffpeg.errors import Invalid
 from tariffpeg.model.licence import Licence
-from tariffpeg.triage.disposition import Disposition
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.triage.schedule import (
     NOTICE_DAYS,
     Booking,
@@ -240,3 +240,11 @@ def test_a_round_that_was_asked_for_nothing_holds_nothing() -> None:
     assert Round().booked == 0
     assert Round().all_in_time
     assert Round().refusal_lines() == ()
+
+
+def test_an_inspector_who_is_away_that_day_is_passed_over() -> None:
+    away = frozenset({dt.date(2025, 6, 4), dt.date(2025, 6, 5), dt.date(2025, 6, 6)})
+    scheduler = Scheduler([Diary("Angove", 4, away), Diary("Trewin")])
+    booking = scheduler.book(licence(), Disposition.URGENT, DECIDED)
+    assert isinstance(booking, Booking)
+    assert booking.inspector == "Trewin"

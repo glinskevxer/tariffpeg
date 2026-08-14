@@ -5,10 +5,10 @@ from __future__ import annotations
 from tariffpeg.claims.pack import PACK
 from tariffpeg.model.channel import Channel
 from tariffpeg.model.licence import Licence
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile, build
 from tariffpeg.report.explanation import explain, heaviest
-from tariffpeg.triage.disposition import Disposition
 from tests.report.test_casefile import QUIET, captures, coverage, notice, reviews
 from tests.triage.conftest import a_review
 
@@ -143,3 +143,27 @@ def test_the_rooms_block_has_a_heading_of_its_own(
     anchor: Licence, channels: dict[str, Channel]
 ) -> None:
     assert "HOW IT SITS ACROSS THE ROOMS" in explain(file_for(anchor, channels)).lines()
+
+
+def test_a_second_finding_is_added_at_the_tail_share(
+    anchor: Licence, channels: dict[str, Channel]
+) -> None:
+    two = (
+        a_review("1", "There is no lift at all and we carried the cases up."),
+        a_review("2", "They have no lift, which the listing never mentioned."),
+        a_review(
+            "3",
+            "Breakfast was charged at twelve pounds a head, which the listing"
+            " did not mention anywhere before we booked the room.",
+            channel="atlas",
+        ),
+        a_review(
+            "4",
+            "Breakfast was charged at ten pounds a head and we had expected"
+            " it to come with the rate as the listing said.",
+        ),
+    )
+    wider = anchor.with_particular("breakfast_included", True)
+    file = build(wider, two, channels, coverage(), [], PACK, AT, captures())
+    lines = explain(file).arithmetic()
+    assert any("adds" in line and "which is" in line for line in lines)

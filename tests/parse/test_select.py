@@ -6,7 +6,7 @@ import pytest
 
 from tariffpeg.errors import Invalid
 from tariffpeg.parse.dom import parse
-from tariffpeg.parse.select import compile_selector
+from tariffpeg.parse.select import ATTRIBUTE_OPERATORS, compile_selector
 
 PAGE = """
 <div id="reviews" class="panel wide" data-count="3">
@@ -212,3 +212,25 @@ def test_the_compiled_shapes_are_the_ones_the_reader_builds() -> None:
     assert step.simple.tag == "article"
     assert step.simple.classes == ("review",)
     assert step.simple.attributes == (AttributeTest("data-id", "=", "1"),)
+
+
+def test_the_first_element_in_a_parent_has_no_previous_sibling() -> None:
+    root = parse('<div><p class="a">one</p><p class="b">two</p></div>')
+    assert compile_selector("p.a + p.b").select(root)
+    assert compile_selector("p.b + p.a").select(root) == ()
+
+
+def test_the_root_of_the_page_has_no_previous_sibling() -> None:
+    root = parse("<div><p>one</p></div>")
+    assert compile_selector("div + div").select(root) == ()
+
+
+def test_every_attribute_test_the_package_names_actually_parses() -> None:
+    for operator in ATTRIBUTE_OPERATORS:
+        found = compile_selector(f"[data-count{operator}3]")
+        assert found.branches
+
+
+def test_a_branch_that_ends_with_a_combinator_is_refused() -> None:
+    with pytest.raises(Invalid, match="cannot end with a combinator"):
+        compile_selector("article.review >")

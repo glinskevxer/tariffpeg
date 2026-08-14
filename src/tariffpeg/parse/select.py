@@ -27,13 +27,19 @@ _SIMPLE = re.compile(
     r"(?P<rest>(?:[#.][\w-]+|\[[^\]]*\]|:[a-z-]+(?:\([^)]*\))?)*)"
 )
 _PIECE = re.compile(r"[#.][\w-]+|\[[^\]]*\]|:[a-z-]+(?:\([^)]*\))?")
+ATTRIBUTE_OPERATORS = ("=", "~=", "^=", "$=", "*=", "|=")
+"""The attribute tests a profile may use.
+
+The regular expression below is built from this tuple rather than repeating it,
+so a test added here is a test the parser accepts and nothing has to agree with
+anything by hand."""
+
+_MODIFIERS = "".join(operator[0] for operator in ATTRIBUTE_OPERATORS if len(operator) > 1)
+
 _ATTR = re.compile(
-    r"\[\s*([\w-]+)\s*(?:([~^$*|]?=)\s*"
+    r"\[\s*([\w-]+)\s*(?:([" + _MODIFIERS + r"]?=)\s*"
     r"(?:\"([^\"]*)\"|" + QUOTE + r"([^" + QUOTE + r"]*)" + QUOTE + r"|([^\]]*?))\s*)?\]"
 )
-
-ATTRIBUTE_OPERATORS = ("=", "~=", "^=", "$=", "*=", "|=")
-"""The attribute tests a profile may use."""
 
 PSEUDO_CLASSES = ("first-child", "last-child", "only-child", "nth-of-type", "not-empty")
 """The pseudo classes a profile may use."""
@@ -171,8 +177,6 @@ def _parse_attribute(piece: str) -> AttributeTest:
     if match is None:
         raise Invalid("selector", piece, "this is not an attribute test")
     operator = match.group(2)
-    if operator is not None and operator not in ATTRIBUTE_OPERATORS:
-        raise Invalid("selector", operator, "this attribute test is not supported")
     value = match.group(3) or match.group(4) or match.group(5) or ""
     return AttributeTest(match.group(1), operator, value)
 

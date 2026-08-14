@@ -141,3 +141,10 @@ def test_a_shape_with_nothing_in_it_says_nothing() -> None:
     assert isinstance(empty, Spread)
     assert empty.known == 0
     assert not empty.concentrated
+
+
+def test_a_finding_where_nobody_named_a_room_has_no_share_in_any_class() -> None:
+    finding, reviews = finding_of("", "")
+    found = spread(finding, reviews)
+    assert found.known == 0
+    assert share_in(found, "attic-twin") == 0.0

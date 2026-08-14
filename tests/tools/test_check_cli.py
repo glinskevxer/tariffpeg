@@ -114,3 +114,22 @@ def test_the_check_exits_one_when_it_finds_something(plant: Planter) -> None:
         files(("tariffpeg/cli/thing.py", GOOD), ("tariffpeg/cli/main.py", '"""x."""\n')),
     )
     assert check_cli.main() == 1
+
+
+def test_a_decorator_that_is_not_a_plain_name_is_left_alone(plant: Planter) -> None:
+    text = (
+        chr(34) * 3
+        + "x."
+        + chr(34) * 3
+        + chr(10) * 2
+        + "DECORATORS = {}"
+        + chr(10) * 2
+        + '@DECORATORS["command"]'
+        + chr(10)
+        + "def show_command() -> None:"
+        + chr(10)
+        + '    """Show a thing."""'
+        + chr(10)
+    )
+    plant(check_cli, "package_files", [make_source("tariffpeg/cli/x.py", text)])
+    assert check_cli.problems() == []

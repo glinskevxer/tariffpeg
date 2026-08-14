@@ -8,7 +8,7 @@ import pytest
 
 from tariffpeg.errors import Invalid
 from tariffpeg.model.licence import Licence
-from tariffpeg.model.period import Season
+from tariffpeg.model.period import Season, SeasonCalendar
 from tariffpeg.sample.regime import PUBLISHED, Regime, Requirement
 
 
@@ -145,3 +145,9 @@ def test_a_regime_version_below_one_is_refused() -> None:
 def test_the_published_regime_carries_a_version_a_case_file_can_cite() -> None:
     assert PUBLISHED.version == 1
     assert PUBLISHED.lookback_months == 24
+
+
+def test_a_season_the_calendar_gives_no_months_to_is_open_for_none_of_it() -> None:
+    no_off_season = SeasonCalendar(frozenset({7, 8}), frozenset({1, 2, 3, 4, 5, 6, 9, 10, 11, 12}))
+    regime = Regime(1, calendar=no_off_season)
+    assert regime.open_share(licence(), Season.OFF) == 0.0

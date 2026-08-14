@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -317,3 +318,20 @@ def test_a_letter_is_drafted_from_the_licence_and_the_month(wired: Database) -> 
     drafted = service.letter_draft(wired, licence, AT, dt.date(2025, 10, 2))
     assert drafted.licence_ref == licence.ref
     assert drafted.reply_by > dt.date(2025, 10, 2)
+
+
+def test_a_bundle_carries_the_tag_the_channel_served_the_page_under(
+    wired: Database, tmp_path: Path
+) -> None:
+    body = b"<html>page</html>"
+    tagged = "sha256:" + "b" * 64
+    store = CaptureStore(wired)
+    store.record(replace(a_capture(DIGEST), digest=tagged, etag='W/"a1b2"'))
+    store.db.conn.execute(
+        "INSERT INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+        (tagged, body, "2025-07-04T22:15:00Z"),
+    )
+    out = tmp_path / "tagged"
+    index, written = service.bundle_for(wired, 4021, out)
+    assert written == 1
+    assert "etag" in index.read_text(encoding="utf-8")

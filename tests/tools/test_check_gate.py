@@ -103,3 +103,7 @@ def test_the_check_exits_one_when_it_finds_something(
 ) -> None:
     monkeypatch.setattr(check_gate, "tools_on_disk", lambda: ({"check_missing"}, {"build_one"}))
     assert check_gate.main() == 1
+
+
+def test_a_runner_file_that_is_not_there_names_nothing(tmp_path: Path) -> None:
+    assert check_gate.named_in(tmp_path / "there-is-no-such-script.sh") == set()

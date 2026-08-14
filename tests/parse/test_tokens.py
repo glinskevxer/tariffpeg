@@ -174,3 +174,8 @@ def test_a_tokenizer_can_be_driven_directly() -> None:
     reader = Tokenizer("<p>x</p>")
     assert reader.position == 0
     assert reader.tokens() == tokenize("<p>x</p>")
+
+
+def test_a_closing_tag_that_was_never_finished_swallows_the_rest() -> None:
+    found = list(tokenize("<p>text</p"))
+    assert any(isinstance(item, EndTag) for item in found)

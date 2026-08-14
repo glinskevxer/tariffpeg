@@ -149,3 +149,22 @@ def test_a_file_with_no_columns_in_it_is_left_alone(plant: Planter) -> None:
 def test_the_column_keys_are_read_off_the_calls() -> None:
     found = check_columns.column_sets(make_source("tariffpeg/cli/x.py", GOOD))
     assert frozenset({"licence", "channel", "pages"}) in [keys for _, keys in found]
+
+
+def test_a_column_whose_key_is_not_written_out_is_left_alone(plant: Planter) -> None:
+    text = (
+        HEAD
+        + "NAME = "
+        + chr(34)
+        + "licence"
+        + chr(34)
+        + NL
+        + "COLUMNS = (Column(NAME, "
+        + chr(34)
+        + "licence"
+        + chr(34)
+        + "),)"
+        + NL
+    )
+    plant(check_columns, "package_files", one(text))
+    assert check_columns.problems() == []

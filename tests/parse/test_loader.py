@@ -38,6 +38,14 @@ required = true
 BARE = '[[profile]]\nchannel = "x"\nversion = 1\ncontainer = "a"\n'
 
 
+NOT_A_LIST = """[[profile]]
+channel = "seaboard"
+version = 1
+container = "article.review"
+field = "body"
+"""
+
+
 def test_a_profile_reads_out_of_a_file() -> None:
     profiles = read_text(GOOD)
     assert len(profiles) == 1
@@ -134,3 +142,10 @@ def test_a_file_is_read_off_disk(tmp_path: Path) -> None:
 def test_a_profile_file_that_is_not_there_is_refused(tmp_path: Path) -> None:
     with pytest.raises(Invalid, match="no profile file here"):
         load(tmp_path / "nothing.toml")
+
+
+def test_fields_written_as_something_other_than_a_list_are_refused(tmp_path: Path) -> None:
+    target = tmp_path / "profiles.toml"
+    target.write_text(NOT_A_LIST, encoding="utf-8")
+    with pytest.raises(Invalid, match="written as a list of tables"):
+        load(target)
