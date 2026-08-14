@@ -10,6 +10,7 @@ from tariffpeg import service
 from tariffpeg.cli.context import Context, pack_asked_for, pack_option, refusals
 from tariffpeg.cli.harvest import month_or_now
 from tariffpeg.model.determination import Determination, movement, unexplained
+from tariffpeg.model.outcome import Disposition
 from tariffpeg.report.explanation import explain
 from tariffpeg.report.locality import COLUMNS as PLACE_COLUMNS
 from tariffpeg.report.locality import unsampled
@@ -61,15 +62,30 @@ def triage_group() -> None:
 @triage_group.command(name="list")
 @click.option("--at", "at", default="", help="The month to decide at.")
 @click.option("--needing-a-visit", is_flag=True, help="Only the ones that send somebody out.")
+@click.option("--locality", default="", help="Only the premises in this place.")
+@click.option(
+    "--disposition",
+    default=None,
+    type=click.Choice([str(item) for item in Disposition]),
+    help="Only the licences that came out at this disposition.",
+)
 @pack_option
 @click.pass_obj
-def list_command(ctx: Context, at: str, needing_a_visit: bool, pack_version: int) -> None:
+def list_command(
+    ctx: Context,
+    at: str,
+    needing_a_visit: bool,
+    locality: str,
+    disposition: str | None,
+    pack_version: int,
+) -> None:
     """List what the unit would do about every active licence."""
     store = ctx.store()
     with refusals():
         month = month_or_now(at, ctx)
         found = service.decisions(store, month, pack_asked_for(pack_version))
-        names = {licence.serial: licence.trading_name for licence in LicenceStore(store).all()}
+        wanted = LicenceStore(store).matching(locality)
+        names = {licence.serial: licence.trading_name for licence in wanted}
     rows = [
         {
             "licence": decision.licence_serial,
@@ -80,7 +96,9 @@ def list_command(ctx: Context, at: str, needing_a_visit: bool, pack_version: int
             "held": decision.capped,
         }
         for decision in found
-        if not needing_a_visit or decision.needs_a_visit
+        if decision.licence_serial in names
+        and (not needing_a_visit or decision.needs_a_visit)
+        and (not disposition or str(decision.disposition) == disposition)
     ]
     if not rows:
         ctx.say("nothing needs doing")

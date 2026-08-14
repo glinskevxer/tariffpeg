@@ -116,13 +116,23 @@ def list_command(ctx: Context, locality: str, status: str) -> None:
     """List what is on the register."""
     store = LicenceStore(ctx.store())
     with refusals():
-        if locality:
-            held = store.in_locality(locality)
-        elif status:
-            held = store.with_status(LicenceStatus(status))
-        else:
-            held = store.all()
+        held = store.matching(locality, LicenceStatus(status) if status else None)
+    if not held:
+        ctx.say("nothing on the register answers to that")
+        return
     ctx.emit([as_row(licence) for licence in held], COLUMNS)
+
+
+@licence_group.command(name="localities")
+@click.pass_obj
+def localities_command(ctx: Context) -> None:
+    """List the places the register has premises in."""
+    with refusals():
+        found = LicenceStore(ctx.store()).localities()
+    if not found:
+        ctx.say("the register is empty")
+        return
+    ctx.say(*found)
 
 
 @licence_group.command(name="show")

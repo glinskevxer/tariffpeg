@@ -312,6 +312,10 @@ List what is on the register.
 | `--locality` |  | Only this locality. |
 | `--status` |  | Only licences in this status. |
 
+### `tariffpeg licence localities`
+
+List the places the register has premises in.
+
 ### `tariffpeg licence particulars`
 
 List the particulars the licensing order recognises.
@@ -629,6 +633,8 @@ List what the unit would do about every active licence.
 | --- | --- | --- |
 | `--at` |  | The month to decide at. |
 | `--needing-a-visit` |  | Only the ones that send somebody out. |
+| `--locality` |  | Only the premises in this place. |
+| `--disposition` |  | Only the licences that came out at this disposition. |
 | `--pack` |  | Read the reviews under this published rule pack instead of the one in force. |
 
 ### `tariffpeg triage locality`

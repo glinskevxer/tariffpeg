@@ -247,3 +247,23 @@ def test_an_extract_that_is_not_there_is_refused(migrated: Run, tmp_path: Path) 
     result = migrated("licence", "import", str(tmp_path / "nothing.csv"))
     assert result.exit_code == 2
     assert "no extract here" in result.output
+
+
+def test_a_locality_and_a_status_narrow_together(migrated: Run) -> None:
+    migrated(*ADD)
+    result = migrated("licence", "list", "--locality", "Porthgwarra", "--status", "lapsed")
+    assert result.exit_code == 0
+    assert "nothing on the register answers to that" in result.output
+
+
+def test_the_register_says_which_places_it_holds_premises_in(migrated: Run) -> None:
+    migrated(*ADD)
+    result = migrated("licence", "localities")
+    assert result.exit_code == 0
+    assert "Porthgwarra" in result.output
+
+
+def test_an_empty_register_has_no_places_in_it(migrated: Run) -> None:
+    result = migrated("licence", "localities")
+    assert result.exit_code == 0
+    assert "the register is empty" in result.output

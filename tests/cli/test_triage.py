@@ -260,3 +260,24 @@ def test_a_minuted_register_reconciles_as_still_reading_the_same_way(
     result = run("triage", "reconcile", "--at", "2025-09")
     assert result.exit_code == 0
     assert "still reads the way it was minuted" in result.output
+
+
+def test_the_list_can_be_narrowed_to_one_locality(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "list", "--at", "2025-08", "--locality", "Porthgwarra")
+    assert result.exit_code == 0
+    result = run("triage", "list", "--at", "2025-08", "--locality", "Zennor")
+    assert "nothing needs doing" in result.output
+
+
+def test_the_list_can_be_narrowed_to_one_disposition(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "list", "--at", "2025-08", "--disposition", "urgent re-inspection")
+    assert result.exit_code == 0
+    assert "nothing needs doing" in result.output
+
+
+def test_a_disposition_the_order_does_not_carry_is_refused(run: Run, tmp_path: Path) -> None:
+    harvested(run, tmp_path)
+    result = run("triage", "list", "--at", "2025-08", "--disposition", "referred")
+    assert result.exit_code == 2

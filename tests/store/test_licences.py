@@ -188,3 +188,35 @@ def test_removing_a_licence_takes_its_particulars_with_it(db: Database) -> None:
 def test_removing_a_licence_that_is_not_there_is_refused(db: Database) -> None:
     with pytest.raises(NotFound):
         LicenceStore(db).remove(4021)
+
+
+def test_two_filters_narrow_together_rather_than_one_winning(db: Database) -> None:
+    LicenceStore(db).add(make(serial=4021, locality="Porthgwarra"))
+    LicenceStore(db).add(
+        make(serial=4022, locality="Porthgwarra").with_status(LicenceStatus.LAPSED)
+    )
+    LicenceStore(db).add(make(serial=4023, locality="Mousehole"))
+    found = LicenceStore(db).matching("Porthgwarra", LicenceStatus.ACTIVE)
+    assert [licence.serial for licence in found] == [4021]
+
+
+def test_asking_for_neither_filter_gives_the_whole_register(db: Database) -> None:
+    LicenceStore(db).add(make(serial=4021))
+    LicenceStore(db).add(make(serial=4022))
+    assert len(LicenceStore(db).matching()) == 2
+
+
+def test_a_locality_with_nothing_in_it_comes_back_empty(db: Database) -> None:
+    LicenceStore(db).add(make(serial=4021, locality="Porthgwarra"))
+    assert LicenceStore(db).matching("Zennor") == ()
+
+
+def test_the_localities_come_back_in_order_and_once_each(db: Database) -> None:
+    LicenceStore(db).add(make(serial=4021, locality="Porthgwarra"))
+    LicenceStore(db).add(make(serial=4022, locality="Mousehole"))
+    LicenceStore(db).add(make(serial=4023, locality="Porthgwarra"))
+    assert LicenceStore(db).localities() == ("Mousehole", "Porthgwarra")
+
+
+def test_an_empty_register_has_no_localities(db: Database) -> None:
+    assert LicenceStore(db).localities() == ()

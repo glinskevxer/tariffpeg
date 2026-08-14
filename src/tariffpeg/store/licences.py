@@ -33,6 +33,12 @@ COLUMNS = (
 PLACEHOLDERS = ", ".join("?" for _ in COLUMNS)
 """One question mark per column, for an insert."""
 
+SELECT = f"SELECT {', '.join(COLUMNS)} FROM licence"
+"""The whole row, in the order the table declares it."""
+
+BY_SERIAL = " ORDER BY serial"
+"""How the register reads back, so two runs give the same answer."""
+
 
 def encode_months(months: Iterable[int]) -> str:
     """Render the closed months as the register writes them."""
@@ -176,19 +182,44 @@ class LicenceStore:
 
     def in_locality(self, locality: str) -> tuple[Licence, ...]:
         """Return the licences in one locality, by serial."""
-        rows = self.db.conn.execute(
-            f"SELECT {', '.join(COLUMNS)} FROM licence WHERE locality = ? ORDER BY serial",
-            (locality,),
-        ).fetchall()
-        return tuple(self._hydrate(row) for row in rows)
+        return self.matching(locality=locality)
 
     def with_status(self, status: LicenceStatus) -> tuple[Licence, ...]:
         """Return the licences in one status, by serial."""
-        rows = self.db.conn.execute(
-            f"SELECT {', '.join(COLUMNS)} FROM licence WHERE status = ? ORDER BY serial",
-            (str(status),),
-        ).fetchall()
+        return self.matching(status=status)
+
+    def matching(
+        self, locality: str = "", status: LicenceStatus | None = None
+    ) -> tuple[Licence, ...]:
+        """Return the licences that answer to every filter given, not just the first.
+
+        Two filters used to be two methods and the caller picked one of them,
+        which meant asking for the lapsed licences in one locality quietly threw
+        the status away and printed the whole village.
+        """
+        if locality and status is not None:
+            rows = self.db.conn.execute(
+                f"{SELECT} WHERE locality = ? AND status = ?{BY_SERIAL}",
+                (locality, str(status)),
+            ).fetchall()
+        elif locality:
+            rows = self.db.conn.execute(
+                f"{SELECT} WHERE locality = ?{BY_SERIAL}", (locality,)
+            ).fetchall()
+        elif status is not None:
+            rows = self.db.conn.execute(
+                f"{SELECT} WHERE status = ?{BY_SERIAL}", (str(status),)
+            ).fetchall()
+        else:
+            rows = self.db.conn.execute(f"{SELECT}{BY_SERIAL}").fetchall()
         return tuple(self._hydrate(row) for row in rows)
+
+    def localities(self) -> tuple[str, ...]:
+        """Return the localities the register has premises in, in order."""
+        rows = self.db.conn.execute(
+            "SELECT DISTINCT locality FROM licence ORDER BY locality"
+        ).fetchall()
+        return tuple(str(row[0]) for row in rows)
 
     def declaring(self, key: str, value: bool | int | None = None) -> tuple[Licence, ...]:
         """Return the licences that declare a particular, optionally at a value."""
