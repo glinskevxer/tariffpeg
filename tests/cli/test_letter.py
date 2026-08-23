@@ -197,3 +197,28 @@ def test_the_register_prints_the_deadline_the_holidays_pushed_out(
     listed = migrated("letter", "list", extra=["--config", str(config)])
     assert "2026-06-23" in listed.output
     assert "2026-06-19" not in listed.output
+
+
+def test_nothing_is_chased_when_every_letter_was_answered_in_time(migrated: Run) -> None:
+    stocked(migrated)
+    migrated(*SEND)
+    result = migrated("letter", "chase", "--on", "2026-06-02")
+    assert result.exit_code == 0
+    assert "answered in time" in result.output
+
+
+def test_a_letter_nobody_answered_is_chased(migrated: Run) -> None:
+    stocked(migrated)
+    migrated(*SEND)
+    result = migrated("letter", "chase", "--on", "2026-07-01")
+    assert result.exit_code == 0
+    assert "first reminder" in result.output
+    assert "digest sha256:" in result.output
+
+
+def test_an_answered_letter_is_not_chased(migrated: Run) -> None:
+    stocked(migrated)
+    migrated(*SEND)
+    migrated("letter", "reply", "DE-2026-0044", "--on", "2026-06-10")
+    result = migrated("letter", "chase", "--on", "2026-07-01")
+    assert "answered in time" in result.output

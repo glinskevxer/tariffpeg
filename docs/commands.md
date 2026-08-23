@@ -223,6 +223,14 @@ Read the channels and put what comes back into the store.
 
 Look after what the unit sent and what came back.
 
+### `tariffpeg letter chase`
+
+Draft a reminder for every letter nobody answered in time.
+
+| what | and | why |
+| --- | --- | --- |
+| `--on` |  | The day to reckon from, today if left out. |
+
 ### `tariffpeg letter draft`
 
 Print the letter this licence's case file produces, without sending it.

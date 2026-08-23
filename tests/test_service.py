@@ -10,15 +10,19 @@ import pytest
 
 from tariffpeg import service
 from tariffpeg.clock import FixedClock
+from tariffpeg.model.letter import Letter, Sent
 from tariffpeg.model.licence import LicenceStatus
 from tariffpeg.model.listing import Listing
+from tariffpeg.model.operator import Operator
 from tariffpeg.model.period import StayMonth
 from tariffpeg.model.remediation import Remediation
 from tariffpeg.store.captures import CaptureStore
 from tariffpeg.store.channels import ChannelStore
 from tariffpeg.store.db import Database
+from tariffpeg.store.letters import LetterStore
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
+from tariffpeg.store.operators import OperatorStore
 from tariffpeg.store.remediations import RemediationStore
 from tariffpeg.store.reviews import ReviewStore
 from tariffpeg.triage.schedule import Diary
@@ -335,3 +339,47 @@ def test_a_bundle_carries_the_tag_the_channel_served_the_page_under(
     index, written = service.bundle_for(wired, 4021, out)
     assert written == 1
     assert "etag" in index.read_text(encoding="utf-8")
+
+
+def test_a_licence_that_has_had_its_reminders_is_left_for_a_visit(wired: Database) -> None:
+    OperatorStore(wired).add(
+        Operator(
+            ref="pellow-and-daughter",
+            name="Pellow and Daughter",
+            contact_name="R Pellow",
+            email="r@pellow.example",
+            address="1 Harbour Row",
+            registered_on=dt.date(2025, 1, 6),
+        )
+    )
+    letters = LetterStore(wired)
+    for number in range(2):
+        letters.add(
+            Letter(
+                reference=f"RM-{number}",
+                operator_ref="pellow-and-daughter",
+                licence_serial=4021,
+                kind=Sent.REMINDER,
+                sent_on=dt.date(2026, 6, 1),
+                subject="A reminder",
+                body_digest="sha256:" + "a" * 64,
+            )
+        )
+    letters.add(
+        Letter(
+            reference="DE-1",
+            operator_ref="pellow-and-daughter",
+            licence_serial=4021,
+            kind=Sent.DESK_ENQUIRY,
+            sent_on=dt.date(2026, 6, 1),
+            subject="The lift",
+            body_digest="sha256:" + "b" * 64,
+        )
+    )
+    drafts, left = service.chase(wired, dt.date(2026, 8, 1))
+    assert drafts == ()
+    assert any("where writing stops" in line for line in left)
+
+
+def test_nothing_is_chased_when_no_letter_is_late(wired: Database) -> None:
+    assert service.chase(wired, dt.date(2026, 8, 1)) == ((), ())

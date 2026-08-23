@@ -123,6 +123,14 @@ class LetterStore:
         """Return every letter whose reply is late as at a day."""
         return tuple(letter for letter in self.unanswered() if letter.overdue_on(day, holidays))
 
+    def of_kind(self, serial: int, kind: Sent) -> tuple[Letter, ...]:
+        """Return the letters of one kind sent about one licence, oldest first."""
+        return tuple(letter for letter in self.for_licence(serial) if letter.kind is kind)
+
+    def chased(self, serial: int) -> int:
+        """Return how many times this licence has already been reminded."""
+        return len(self.of_kind(serial, Sent.REMINDER))
+
     def count(self) -> int:
         """Return how many letters the register holds."""
         return int(self.db.conn.execute("SELECT count(*) FROM letter").fetchone()[0])

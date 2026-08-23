@@ -192,3 +192,27 @@ def draft_command(
         )
     ctx.say(*drafted.lines())
     ctx.say("", f"this would go as a {drafted.kind}, digest {digest_of(drafted.text())[:23]}")
+
+
+@letter_group.command(name="chase")
+@click.option(
+    "--on",
+    "day",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day to reckon from, today if left out.",
+)
+@click.pass_obj
+def chase_command(ctx: Context, day: dt.datetime | None) -> None:
+    """Draft a reminder for every letter nobody answered in time."""
+    with refusals():
+        when = day.date() if day else ctx.clock.now().date()
+        drafts, left = service.chase(ctx.store(), when, ctx.settings.holiday_days())
+    if not drafts and not left:
+        ctx.say(f"every letter has been answered in time as at {when}")
+        return
+    for drafted in drafts:
+        ctx.say(*drafted.lines())
+        ctx.say(f"digest {digest_of(drafted.text())[:23]}", "")
+    if left:
+        ctx.say("not chased:", *left)

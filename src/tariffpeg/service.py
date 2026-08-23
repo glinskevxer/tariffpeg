@@ -16,7 +16,7 @@ from tariffpeg.claims.pack import PACK
 from tariffpeg.claims.rules import RulePack
 from tariffpeg.clock import Clock
 from tariffpeg.dedupe.syndication import DEFAULT_RULES, SyndicationRules
-from tariffpeg.errors import Invalid
+from tariffpeg.errors import Conflict, Invalid
 from tariffpeg.fetch.bundle import INDEX
 from tariffpeg.harvest.budget import Budget, spend_by_channel, trim
 from tariffpeg.harvest.budget import measure as measure_budget
@@ -32,7 +32,7 @@ from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
 from tariffpeg.report.locality import Place, by_locality
 from tariffpeg.report.movement import Reconciliation, reconcile
-from tariffpeg.report.notice import Draft
+from tariffpeg.report.notice import Draft, reminder
 from tariffpeg.report.notice import draft as draft_letter
 from tariffpeg.report.summary import Return, compile_return
 from tariffpeg.report.workload import Spread, spread
@@ -43,6 +43,7 @@ from tariffpeg.store.captures import CaptureStore
 from tariffpeg.store.channels import ChannelStore
 from tariffpeg.store.db import Database
 from tariffpeg.store.determinations import DeterminationStore
+from tariffpeg.store.letters import LetterStore
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
 from tariffpeg.store.remediations import RemediationStore
@@ -387,3 +388,26 @@ def letter_draft(
         DeterminationStore(db).latest_for(licence.serial),
         sent_on,
     )
+
+
+def chase(
+    db: Database,
+    on: dt.date,
+    holidays: frozenset[dt.date] = frozenset(),
+) -> tuple[tuple[Draft, ...], tuple[str, ...]]:
+    """Return a reminder for every letter that is late, and what was left alone.
+
+    A licence that has had its reminders is not chased again. It comes back in
+    the second tuple with the reason, because a run that quietly drops those is
+    a run whose output cannot be filed.
+    """
+    letters = LetterStore(db)
+    drafts: list[Draft] = []
+    left: list[str] = []
+    for letter in letters.overdue_on(on, holidays):
+        already = letters.chased(letter.licence_serial)
+        try:
+            drafts.append(reminder(letter, already, on))
+        except Conflict as err:
+            left.append(f"{letter.reference}: {err.reason}")
+    return tuple(drafts), tuple(left)

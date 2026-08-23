@@ -139,3 +139,16 @@ def test_dropping_a_licence_takes_its_letters_with_it(store: LetterStore, db: Da
     store.add(letter())
     LicenceStore(db).remove(4021)
     assert store.count() == 0
+
+
+def test_the_reminders_sent_about_a_licence_are_counted(store: LetterStore) -> None:
+    assert store.chased(4021) == 0
+    store.add(letter("DE-1", kind=Sent.DESK_ENQUIRY))
+    store.add(letter("RM-1", kind=Sent.REMINDER))
+    store.add(letter("RM-2", kind=Sent.REMINDER))
+    assert store.chased(4021) == 2
+    assert len(store.of_kind(4021, Sent.DESK_ENQUIRY)) == 1
+
+
+def test_a_licence_nobody_wrote_to_has_no_letters_of_any_kind(store: LetterStore) -> None:
+    assert store.of_kind(9999, Sent.REMINDER) == ()

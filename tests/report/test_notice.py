@@ -10,12 +10,19 @@ from tariffpeg.claims.pack import PACK
 from tariffpeg.errors import Conflict
 from tariffpeg.model.channel import Channel
 from tariffpeg.model.determination import Determination
-from tariffpeg.model.letter import Sent
+from tariffpeg.model.letter import Letter, Sent
 from tariffpeg.model.licence import Licence
 from tariffpeg.model.outcome import Disposition
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import build
-from tariffpeg.report.notice import KIND_FOR, QUOTES_PER_FINDING, Draft, draft
+from tariffpeg.report.notice import (
+    KIND_FOR,
+    MAX_REMINDERS,
+    QUOTES_PER_FINDING,
+    Draft,
+    draft,
+    reminder,
+)
 from tests.report.test_casefile import AT, captures, coverage, reviews
 from tests.triage.conftest import a_review
 
@@ -143,3 +150,50 @@ def test_a_letter_written_by_hand_prints_the_same_way_as_a_drafted_one() -> None
     lines = letter.lines()
     assert lines[0] == "Our reference: L-004021-M"
     assert lines[-1] == "Please reply by 2025-10-23."
+
+
+def a_letter(**over: object) -> Letter:
+    base: dict[str, object] = {
+        "reference": "DE-2026-0044",
+        "operator_ref": "pellow-and-daughter",
+        "licence_serial": 4021,
+        "kind": Sent.DESK_ENQUIRY,
+        "sent_on": dt.date(2026, 6, 1),
+        "subject": "The passenger lift at The Anchor Rooms",
+        "body_digest": "sha256:" + "a" * 64,
+    }
+    base.update(over)
+    return Letter(**base)  # type: ignore[arg-type]
+
+
+def test_a_reminder_repeats_the_ask_and_names_the_day_it_was_due() -> None:
+    chaser = reminder(a_letter(), 0, dt.date(2026, 6, 25))
+    body = " ".join(chaser.paragraphs)
+    assert "2026-06-01" in body
+    assert "first reminder" in body
+    assert chaser.kind is Sent.REMINDER
+
+
+def test_the_second_reminder_says_it_is_the_second() -> None:
+    chaser = reminder(a_letter(), 1, dt.date(2026, 6, 25))
+    assert "second reminder" in " ".join(chaser.paragraphs)
+
+
+def test_a_letter_that_was_answered_is_not_chased() -> None:
+    with pytest.raises(Conflict, match="was answered on"):
+        reminder(a_letter(replied_on=dt.date(2026, 6, 10)), 0, dt.date(2026, 6, 25))
+
+
+def test_a_reminder_is_not_chased_by_another_reminder() -> None:
+    with pytest.raises(Conflict, match="chased by a visit"):
+        reminder(a_letter(kind=Sent.REMINDER), 0, dt.date(2026, 6, 25))
+
+
+def test_writing_stops_after_the_reminders_the_unit_allows() -> None:
+    with pytest.raises(Conflict, match="where writing stops"):
+        reminder(a_letter(), MAX_REMINDERS, dt.date(2026, 6, 25))
+
+
+def test_the_reminder_gives_the_operator_the_shorter_reply_window() -> None:
+    chaser = reminder(a_letter(), 0, dt.date(2026, 6, 25))
+    assert chaser.reply_by == dt.date(2026, 7, 6)

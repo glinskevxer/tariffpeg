@@ -18,10 +18,18 @@ from dataclasses import dataclass
 
 from tariffpeg.errors import Conflict
 from tariffpeg.model.determination import Determination
-from tariffpeg.model.letter import REPLY_DAYS, Sent
+from tariffpeg.model.letter import REPLY_DAYS, Letter, Sent
 from tariffpeg.model.outcome import Disposition
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.workdays import add_working_days
+
+MAX_REMINDERS = 2
+"""How many times an operator is chased before the unit stops writing.
+
+The third letter is not a letter. An operator who has ignored two of them is
+answered by sending somebody to the premises, and the file says that is what
+happened rather than showing a fourth reminder nobody read.
+"""
 
 KIND_FOR = {
     Disposition.DESK_ENQUIRY: Sent.DESK_ENQUIRY,
@@ -125,4 +133,37 @@ def draft(case: CaseFile, minute: Determination | None, sent_on: dt.date) -> Dra
         subject=f"Accommodation standards: {case.licence.trading_name}",
         paragraphs=tuple(paragraphs),
         reply_by=add_working_days(sent_on, REPLY_DAYS[kind]),
+    )
+
+
+def reminder(original: Letter, chased_before: int, sent_on: dt.date) -> Draft:
+    """Return the reminder that follows an unanswered letter, or refuse.
+
+    The reminder repeats what was asked rather than restating the evidence. An
+    operator who did not answer the first letter is not helped by a longer one,
+    and the evidence has not changed since it went.
+    """
+    if original.answered:
+        raise Conflict("reminder", f"{original.reference} was answered on {original.replied_on}")
+    if original.kind is Sent.REMINDER:
+        raise Conflict("reminder", "a reminder is chased by a visit, not by another reminder")
+    if chased_before >= MAX_REMINDERS:
+        raise Conflict(
+            "reminder",
+            f"this licence has had {chased_before} reminders, which is where writing stops",
+        )
+    ordinal = "second" if chased_before else "first"
+    return Draft(
+        licence_serial=original.licence_serial,
+        licence_ref=original.reference,
+        operator_name=original.operator_ref,
+        kind=Sent.REMINDER,
+        subject=f"Reminder: {original.subject}",
+        paragraphs=(
+            f"We wrote to you on {original.sent_on} about {original.subject.lower()}"
+            f" and asked for a reply by {original.due_on()}. We have not had one.",
+            f"This is the {ordinal} reminder. If we do not hear from you an officer"
+            " will visit the premises without a further letter.",
+        ),
+        reply_by=add_working_days(sent_on, REPLY_DAYS[Sent.REMINDER]),
     )
