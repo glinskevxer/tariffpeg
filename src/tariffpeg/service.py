@@ -238,6 +238,28 @@ def quoted_digests(
     return held
 
 
+def minuted_digests(
+    db: Database,
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> set[str]:
+    """Return the captures behind every case file the unit has minuted.
+
+    Each minute is read back at the month it was taken for, not at today, so a
+    page that was quoted then is protected even if the case no longer quotes it.
+    """
+    held: set[str] = set()
+    licences = {licence.serial: licence for licence in LicenceStore(db).all()}
+    for record in DeterminationStore(db).all():
+        licence = licences.get(record.licence_serial)
+        if licence is None:
+            continue
+        case = case_for(db, licence, record.decided_at, pack, regime, rules)
+        held.update(item.capture_digest for item in case.quotations)
+    return held
+
+
 def retention_plan(
     db: Database,
     before: dt.date,
@@ -247,7 +269,12 @@ def retention_plan(
     rules: SyndicationRules = DEFAULT_RULES,
 ) -> Prune:
     """Return what a retention run would drop, protecting what is quoted."""
-    return build_prune(db, before, quoted_digests(db, at, pack, regime, rules))
+    return build_prune(
+        db,
+        before,
+        quoted_digests(db, at, pack, regime, rules),
+        minuted_digests(db, pack, regime, rules),
+    )
 
 
 def localities(

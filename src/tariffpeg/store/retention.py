@@ -2,9 +2,14 @@
 
 A store that keeps every page it ever read grows without limit, and most of
 those pages are behind reviews that nothing has ever quoted. So bodies get
-dropped. What is not dropped is anything a live case file quotes, and the list
-of those is passed in rather than worked out here, because the layer that knows
-which quotations are live is a long way above this one.
+dropped. What is not dropped is anything a case file quotes, and the list of
+those is passed in rather than worked out here, because the layer that knows
+which quotations count is a long way above this one.
+
+Two lists come in, not one. A page a live case file quotes is protected because
+the case is still open. A page a minuted decision quoted is protected for good,
+because that page is what the operator was written to on the strength of, and it
+has to be producible whether or not the case still reads that way today.
 
 Nothing is dropped without a plan being built first and looked at. That is not
 politeness, it is the difference between a retention rule and an accident.
@@ -29,6 +34,7 @@ class Prune:
     bytes_freed: int
     kept_in_use: tuple[str, ...]
     kept_recent: tuple[str, ...]
+    kept_minuted: tuple[str, ...] = ()
 
     @property
     def count(self) -> int:
@@ -40,6 +46,7 @@ class Prune:
         return (
             f"{self.count} page bodies would go, freeing {self.bytes_freed} bytes",
             f"{len(self.kept_in_use)} are quoted in a live case file and stay",
+            f"{len(self.kept_minuted)} are behind a minuted decision and never go",
             f"{len(self.kept_recent)} are too recent to drop and stay",
         )
 
@@ -48,12 +55,15 @@ def plan(
     db: Database,
     before: dt.date,
     in_use: Iterable[str] = (),
+    minuted: Iterable[str] = (),
 ) -> Prune:
     """Return what a retention run would do, without doing any of it."""
-    protected = set(in_use)
+    cited = set(minuted)
+    protected = set(in_use) - cited
     dropping: list[str] = []
     kept_in_use: list[str] = []
     kept_recent: list[str] = []
+    kept_minuted: list[str] = []
     freed = 0
     rows = db.conn.execute(
         "SELECT c.digest AS digest, c.fetched_at AS fetched_at, length(b.body) AS size"
@@ -62,6 +72,9 @@ def plan(
     ).fetchall()
     for row in rows:
         digest = str(row["digest"])
+        if digest in cited:
+            kept_minuted.append(digest)
+            continue
         if digest in protected:
             kept_in_use.append(digest)
             continue
@@ -70,7 +83,13 @@ def plan(
             continue
         dropping.append(digest)
         freed += int(row["size"] or 0)
-    return Prune(tuple(dropping), freed, tuple(kept_in_use), tuple(kept_recent))
+    return Prune(
+        tuple(dropping),
+        freed,
+        tuple(kept_in_use),
+        tuple(kept_recent),
+        tuple(kept_minuted),
+    )
 
 
 def run(db: Database, prune: Prune) -> int:

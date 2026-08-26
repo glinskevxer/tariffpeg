@@ -409,3 +409,26 @@ def test_a_minuted_store_says_the_ledger_is_clear(wired: Database) -> None:
     found = service.health(wired, AT, dt.date(2025, 9, 15))
     ledger = [reading for reading in found.readings if reading.name == "ledger"][0]
     assert ledger.state == "clear"
+
+
+def test_nothing_is_minuted_so_nothing_is_protected_by_the_ledger(
+    wired: Database,
+) -> None:
+    assert service.minuted_digests(wired) == set()
+
+
+def test_the_evidence_behind_a_minute_is_protected_from_the_retention_run(
+    wired: Database,
+) -> None:
+    body = b"<html>page</html>"
+    ReviewStore(wired).add(a_review("1", NO_LIFT), FETCHED)
+    ReviewStore(wired).add(a_review("2", NO_LIFT_AGAIN), FETCHED)
+    wired.conn.execute(
+        "INSERT INTO capture_body (digest, body, stored_at) VALUES (?, ?, ?)",
+        (DIGEST, body, "2025-07-04T22:15:00Z"),
+    )
+    service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    assert DIGEST in service.minuted_digests(wired)
+    plan = service.retention_plan(wired, dt.date(2026, 1, 1), StayMonth(2026, 6))
+    assert plan.dropping == ()
+    assert plan.kept_minuted == (DIGEST,)

@@ -114,14 +114,34 @@ def test_a_plan_naming_a_capture_that_has_gone_is_refused(stocked: Database) -> 
         run(stocked, found)
 
 
-def test_the_plan_reads_as_three_lines_somebody_can_check(stocked: Database) -> None:
+def test_the_plan_reads_as_four_lines_somebody_can_check(stocked: Database) -> None:
     store = CaptureStore(stocked)
     keep(store, b"<html>old</html>")
     keep(store, b"<html>recent</html>", dt.datetime(2026, 6, 1, tzinfo=dt.UTC))
     lines = plan(stocked, CUTOFF).lines()
-    assert len(lines) == 3
+    assert len(lines) == 4
     assert "1 page bodies would go" in lines[0]
-    assert "1 are too recent" in lines[2]
+    assert "0 are behind a minuted decision" in lines[2]
+    assert "1 are too recent" in lines[3]
+
+
+def test_a_page_behind_a_minuted_decision_never_goes(stocked: Database) -> None:
+    store = CaptureStore(stocked)
+    old = keep(store, b"<html>old</html>")
+    found = plan(stocked, CUTOFF, minuted=[old])
+    assert found.dropping == ()
+    assert found.kept_minuted == (old,)
+    assert found.bytes_freed == 0
+
+
+def test_a_page_that_is_both_quoted_and_minuted_is_counted_once(
+    stocked: Database,
+) -> None:
+    store = CaptureStore(stocked)
+    old = keep(store, b"<html>old</html>")
+    found = plan(stocked, CUTOFF, in_use=[old], minuted=[old])
+    assert found.kept_minuted == (old,)
+    assert found.kept_in_use == ()
 
 
 def test_a_plan_with_nothing_in_it_is_the_shape_it_says() -> None:
