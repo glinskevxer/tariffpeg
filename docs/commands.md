@@ -147,6 +147,15 @@ Copy the store to another file while it is still open.
 | --- | --- | --- |
 | `path` | argument |  |
 
+### `tariffpeg db health`
+
+Say in one place whether the unit is keeping up.
+
+| what | and | why |
+| --- | --- | --- |
+| `--at` |  | The month to read the evidence at. |
+| `--on` |  | The day to reckon the reply clocks from. |
+
 ### `tariffpeg db migrate`
 
 Bring the store up to the schema this version expects.

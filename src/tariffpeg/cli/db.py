@@ -10,6 +10,7 @@ import click
 from tariffpeg import service
 from tariffpeg.cli.context import Context, refusals
 from tariffpeg.cli.harvest import month_or_now
+from tariffpeg.report.health import COLUMNS as HEALTH_COLUMNS
 from tariffpeg.report.rows import Column
 from tariffpeg.store.captures import CaptureStore
 from tariffpeg.store.channels import ChannelStore
@@ -156,3 +157,34 @@ def reclaim_command(ctx: Context) -> None:
     with refusals():
         freed = store.reclaim()
     ctx.say(f"{freed} bytes reclaimed, the store is now {store.byte_size()} bytes")
+
+
+@db_group.command(name="health")
+@click.option("--at", "at", default="", help="The month to read the evidence at.")
+@click.option(
+    "--on",
+    "on",
+    type=click.DateTime(["%Y-%m-%d"]),
+    default=None,
+    help="The day to reckon the reply clocks from.",
+)
+@click.pass_obj
+def health_command(ctx: Context, at: str, on: dt.datetime | None) -> None:
+    """Say in one place whether the unit is keeping up.
+
+    This is what the overnight job runs. It exits nothing when there is nothing
+    to act on, one when the unit is behind, and two when the store itself cannot
+    be relied on.
+    """
+    with refusals():
+        found = service.health(
+            ctx.store(),
+            month_or_now(at, ctx),
+            on.date() if on else ctx.clock.now().date(),
+            ctx.settings.holiday_days(),
+        )
+    ctx.emit(found.rows(), HEALTH_COLUMNS)
+    ctx.say("", found.summary())
+    code = found.exit_code()
+    if code:
+        raise click.exceptions.Exit(code)

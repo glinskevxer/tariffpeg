@@ -30,6 +30,7 @@ from tariffpeg.model.listing import Listing
 from tariffpeg.model.period import StayMonth
 from tariffpeg.report.casefile import CaseFile
 from tariffpeg.report.casefile import build as build_case
+from tariffpeg.report.health import FAULT, Health, Reading, clear, fault, warning
 from tariffpeg.report.locality import Place, by_locality
 from tariffpeg.report.movement import Reconciliation, reconcile
 from tariffpeg.report.notice import Draft, reminder
@@ -46,6 +47,7 @@ from tariffpeg.store.determinations import DeterminationStore
 from tariffpeg.store.letters import LetterStore
 from tariffpeg.store.licences import LicenceStore
 from tariffpeg.store.listings import ListingStore
+from tariffpeg.store.migrations import current_version, drift
 from tariffpeg.store.remediations import RemediationStore
 from tariffpeg.store.retention import Prune
 from tariffpeg.store.retention import plan as build_prune
@@ -411,3 +413,71 @@ def chase(
         except Conflict as err:
             left.append(f"{letter.reference}: {err.reason}")
     return tuple(drafts), tuple(left)
+
+
+def health(
+    db: Database,
+    at: StayMonth,
+    on: dt.date,
+    holidays: frozenset[dt.date] = frozenset(),
+    pack: RulePack = PACK,
+    regime: Regime = PUBLISHED,
+    rules: SyndicationRules = DEFAULT_RULES,
+) -> Health:
+    """Return one reading of whether the unit is keeping up.
+
+    The store is checked first and the rest is only worth reading if it passed.
+    A file that does not verify will happily answer every other question here,
+    wrongly, and a warning about an unminuted month is not what anybody needs to
+    see about a corrupt store.
+    """
+    readings = [_store_reading(db)]
+    if readings[0].state != FAULT:
+        readings.extend(
+            (
+                _letters_reading(db, on, holidays),
+                _ledger_reading(db, at, pack, regime, rules),
+                _sample_reading(db, at, regime, rules),
+            )
+        )
+    return Health(tuple(readings))
+
+
+def _store_reading(db: Database) -> Reading:
+    problems = [*db.integrity_problems(), *drift(db), *CaptureStore(db).body_problems()]
+    if problems:
+        return fault("store", problems[0])
+    return clear("store", f"schema version {current_version(db)}")
+
+
+def _letters_reading(db: Database, on: dt.date, holidays: frozenset[dt.date]) -> Reading:
+    late = LetterStore(db).overdue_on(on, holidays)
+    if not late:
+        return clear("letters", "nothing is waiting on an answer")
+    return warning("letters", f"{len(late)} letters are past their reply day")
+
+
+def _ledger_reading(
+    db: Database,
+    at: StayMonth,
+    pack: RulePack,
+    regime: Regime,
+    rules: SyndicationRules,
+) -> Reading:
+    found = reconciliation(db, at, pack, regime, rules)
+    wanting = found.wanting_a_letter()
+    if wanting:
+        return warning("ledger", f"{len(wanting)} licences read worse than the operator was told")
+    never = found.unminuted()
+    if never:
+        return warning("ledger", f"{len(never)} licences have never been minuted")
+    return clear("ledger", "every licence reads the way it was minuted")
+
+
+def _sample_reading(
+    db: Database, at: StayMonth, regime: Regime, rules: SyndicationRules
+) -> Reading:
+    short = [found for found in coverages(db, at, regime, rules).values() if not found.satisfied]
+    if not short:
+        return clear("sample", "every licence is properly sampled")
+    return warning("sample", f"{len(short)} licences are short of their sample")

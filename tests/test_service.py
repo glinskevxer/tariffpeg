@@ -383,3 +383,29 @@ def test_a_licence_that_has_had_its_reminders_is_left_for_a_visit(wired: Databas
 
 def test_nothing_is_chased_when_no_letter_is_late(wired: Database) -> None:
     assert service.chase(wired, dt.date(2026, 8, 1)) == ((), ())
+
+
+def test_a_fresh_store_reads_as_behind_rather_than_broken(wired: Database) -> None:
+    found = service.health(wired, AT, dt.date(2025, 9, 15))
+    assert found.faults() == ()
+    assert [reading.name for reading in found.readings] == [
+        "store",
+        "letters",
+        "ledger",
+        "sample",
+    ]
+    assert any(reading.name == "ledger" for reading in found.warnings())
+
+
+def test_a_store_that_does_not_verify_stops_the_reading_there(wired: Database) -> None:
+    wired.conn.execute("UPDATE schema_migration SET digest = 'deadbeef' WHERE number = 1")
+    found = service.health(wired, AT, dt.date(2025, 9, 15))
+    assert len(found.readings) == 1
+    assert found.exit_code() == 2
+
+
+def test_a_minuted_store_says_the_ledger_is_clear(wired: Database) -> None:
+    service.minute(wired, AT, "R Bosustow", FixedClock(MINUTED))
+    found = service.health(wired, AT, dt.date(2025, 9, 15))
+    ledger = [reading for reading in found.readings if reading.name == "ledger"][0]
+    assert ledger.state == "clear"

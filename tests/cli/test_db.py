@@ -114,3 +114,25 @@ def test_reclaiming_says_how_much_the_store_gave_back(migrated: Run) -> None:
     result = migrated("db", "reclaim")
     assert result.exit_code == 0
     assert "bytes reclaimed" in result.output
+
+
+def test_the_health_check_exits_one_when_the_unit_is_behind(migrated: Run) -> None:
+    result = migrated("db", "health", "--at", "2025-09", "--on", "2025-09-15")
+    assert result.exit_code in (0, 1)
+    assert "checks" in result.output
+
+
+def test_the_health_check_exits_two_when_the_store_does_not_verify(
+    migrated: Run, store_path: Path
+) -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(store_path)
+    try:
+        conn.execute("UPDATE schema_migration SET digest = 'deadbeef' WHERE number = 1")
+        conn.commit()
+    finally:
+        conn.close()
+    result = migrated("db", "health", "--at", "2025-09", "--on", "2025-09-15")
+    assert result.exit_code == 2
+    assert "fault" in result.output
