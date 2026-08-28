@@ -24,9 +24,23 @@ def test_every_command_in_every_group_has_a_heading() -> None:
     text = build_commands.text()
     assert isinstance(entry_point, click.Group)
     for group_name, group in entry_point.commands.items():
-        assert isinstance(group, click.Group)
+        if not isinstance(group, click.Group):
+            continue
         for command_name in group.commands:
             assert f"### `tariffpeg {group_name} {command_name}`" in text
+
+
+def test_a_command_that_sits_outside_a_group_still_gets_a_heading() -> None:
+    text = build_commands.text()
+    assert isinstance(entry_point, click.Group)
+    loose = [
+        name
+        for name, command in entry_point.commands.items()
+        if not isinstance(command, click.Group)
+    ]
+    assert loose
+    for name in loose:
+        assert f"## `tariffpeg {name}`" in text
 
 
 def test_a_command_carries_the_first_line_of_its_help() -> None:

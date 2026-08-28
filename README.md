@@ -31,6 +31,17 @@ version that read them travel with the quotation into the case file.
 7. **Decides**, and holds the decision at a desk enquiry while the sample is
    short, because an operator will ask what else was looked at.
 8. **Books** a visit on a day the premises is open and an inspector is free.
+9. **Minutes** the decision into the ledger, so what the operator was told
+   survives a later harvest, a later rule pack and a later view of the same
+   reviews.
+10. **Writes** to the operator from the file itself, and chases twice before it
+    stops writing and sends somebody instead.
+
+The ledger is the part that pays for itself later. A decision is worked out from
+the evidence every time it is asked for, which is right while the evidence is
+still being gathered and wrong once a letter has gone out. `triage reconcile`
+sets the two readings against each other and names the licences that have moved
+since anybody was written to.
 
 ## Getting started
 
@@ -53,7 +64,17 @@ tariffpeg --db evidence.sqlite3 case show L-004021-M
 ```
 
 Every command explains itself with `--help`, and every refusal exits with a code
-that says which kind it was.
+that says which kind it was. `tariffpeg about` prints what the build is, which
+is what a disputed case file should be answered with.
+
+An overnight job wants one answer rather than six, so there is one:
+
+```
+tariffpeg --db evidence.sqlite3 db health
+```
+
+It exits nothing when there is nothing to act on, one when the unit is behind,
+and two when the store itself cannot be relied on.
 
 ## The documents
 

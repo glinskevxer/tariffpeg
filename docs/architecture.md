@@ -142,6 +142,7 @@ These modules join the layers up and may import anything: `tariffpeg.service`.
 
 ### cli
 
+- `tariffpeg.cli.about`
 - `tariffpeg.cli.case`
 - `tariffpeg.cli.channel`
 - `tariffpeg.cli.config`

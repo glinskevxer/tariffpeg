@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from tariffpeg import __version__
+from tariffpeg.cli.about import about_command
 from tariffpeg.cli.case import case_group
 from tariffpeg.cli.channel import channel_group
 from tariffpeg.cli.config import config_group
@@ -59,6 +60,7 @@ def main(
     ctx.call_on_close(ctx.obj.close)
 
 
+main.add_command(about_command)
 main.add_command(case_group)
 main.add_command(channel_group)
 main.add_command(config_group)

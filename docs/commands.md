@@ -2,6 +2,10 @@
 
 <!-- Written by build_commands. Do not edit it here. -->
 
+## `tariffpeg about`
+
+Print what this build is, for a bug report to quote.
+
 ## `tariffpeg case`
 
 Build the file an inspector is handed.
